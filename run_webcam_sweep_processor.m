@@ -66,7 +66,7 @@ for k = 1:M
    
    d.openfacepath  = fullerfile (eachpath, 'result',   'openface');  
    d.openfacefile  = fullerfile (d.openfacepath, 'video', 'video.csv');     
-   d.resultpath    = fullerfile (d.runpath, 'result',  'result');  
+   d.eyetrackerpath    = fullerfile (d.runpath, 'result',  'eyetracker');  
    d.oknpath       = fullerfile (d.runpath,  'result', 'okn');     
    
    %d.flowpath      = fullerfile (d.runpath,  'result', 'flow');        
@@ -77,7 +77,7 @@ for k = 1:M
    createdirectory (d.main_dir);
    createdirectory (d.runpath);   
    createdirectory (d.openfacepath);
-   createdirectory (d.resultpath);
+   createdirectory (d.eyetrackerpath);
    %createdirectory (d.participantpath);   
    createdirectory (d.oknpath);   
    %createdirectory (d.flowpath);
@@ -110,8 +110,6 @@ for k = 1:M
        % d.videofile
        % d.openfacefile
        % d.resultpath
-       
-       d
               
        presentation_eyetracker (d, result, setups);
    end
@@ -241,17 +239,17 @@ function presentation_eyetracker (d, result, setups)
        %[~,eachbasename,~] = fileparts (eachItem.filename);
        
        
-       videofile    = d.videofile;
-       openfacefile = d.openfacefile;
-       resultpath   = d.resultpath;
-       configpath   = d.configpath;
+       videofile      = d.videofile;
+       openfacefile   = d.openfacefile;
+       eyetrackerpath = d.eyetrackerpath;
+       configpath     = d.configpath;
        
        %videofile    = fullerfile (d.clipspath, eachItem.filename);
        %openfacefile = fullerfile (d.openfacepath, 'video.csv'));
        %configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
        
        %  outputpath   = fullerfile (d.resultpath, eachbasename); %%, 'results.csv');
-       logfile      = fullerfile (resultpath, 'output.log');       
+       logfile      = fullerfile (eyetrackerpath, 'output.log');       
        if (~exist(openfacefile, 'file'))
             fprintf ('WARNING: No OpenFace ...%s\n', openfacefile);
             return
@@ -260,7 +258,7 @@ function presentation_eyetracker (d, result, setups)
 
        fprintf ('videofile    = %s\n', videofile);
        fprintf ('openfacefile = %s\n', openfacefile);
-       fprintf ('resultpath   = %s\n', resultpath);
+       fprintf ('eyetrackerpath   = %s\n', eyetrackerpath);
        fprintf ('configpath   = %s\n', configpath);
 
        
@@ -280,7 +278,7 @@ function presentation_eyetracker (d, result, setups)
                 error ('Couldnt locate eyetracker.config.');
             end
             
-            run_of_tracker (config, videofile, openfacefile, resultpath); %, 'OverWrite', true);      
+            run_of_tracker (config, videofile, openfacefile, eyetrackerpath); %, 'OverWrite', true);      
             
        else 
            %fprintf ('analyzing ... %s\n', videofile);

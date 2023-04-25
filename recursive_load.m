@@ -38,14 +38,14 @@ function final = recursive_load (filepath, filename, varargin)
       
       % checker 
       if (strcmpi (filepath, thiscd)) 
-          disp('file not found.');
+          disp('file not found on path.');
           final = [];
           return
       end
       
       % shorten the filepath 
       [filepath, ~, ~] = fileparts (filepath);
-      eachfile = fullfile(filepath, filename)        
+      eachfile = fullfile(filepath, filename);      
       
       
 end
