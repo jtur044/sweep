@@ -1,0 +1,199 @@
+{
+
+
+	"TrialsPerLevel" 	: 3,
+	"TotalLevels" 		: 12,
+
+
+	"Participant" : { 	"Id"  : "{{participant.Id}}",
+		 				"eye" : "{{participant.Eye}}",		
+						"VA"  : "{{participant.VA}}" },
+	
+	
+	"directories" : {   "input"          : "{{{directories.main}}}",
+                        "input_video"    : "{{{directories.video}}}",
+                        "input_metadata" : "{{{directories.metadata}}}",                        
+                        "input_features" : "{{{directories.openface_features}}}",
+                        "protocol" 	     : "{{{directories.protocol}}}",              
+                        "results" 	     : "{{{directories.results}}}",       
+                        "output"         : "{{{directories.output}}}",
+                        "package"        : "{{{NULL}}}",
+                        "figures"        : "{{{NULL}}}",    
+                    	"filters"        : "{{{NULL}}}",
+                    	"summary"		 : "{{{NULL}}}" },
+
+    "files" : { "protocol"       : "protocol.json", 
+    			"WindowTracker"  : "WindowTracker.csv",
+				"EyeTracker"     : "EyeTracker.csv",
+				"OutputVideo"    : "video.mp4",
+				"OutputFile"     : "output.csv",
+				"SummaryFigure"  : "./results/Zaw_09032021/summary.png",				 
+				"LogFile"        : "logfile.txt" },
+
+
+	"showMatrix"   : { "levels" : [ -1,0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0 ], "order" : [1,2,3,4,5], "height" : 0.1, "width" : 5 },
+
+
+
+
+	"pipeline" : { "FILE_MOVER" :  {    "run_local_eye_signal_generation" : false,
+                                        "run_update_to_local_eye_signals" : true,
+                                        "run_local_okn_detection" : false,
+                                        "run_results_summary" : false },
+
+					"EYE_SIGNALS" :  {   "run_local_eye_signal_generation" : true,
+                                        "run_update_to_local_eye_signals" : false,
+                                        "run_local_okn_detection" : false,
+                                        "run_results_summary" : false },
+
+					"UPDATE_SIGNALS" :  { "run_local_eye_signal_generation" : false,
+                                          "run_update_to_local_eye_signals" : true,
+                                          "run_local_okn_detection" : false,
+                                          "run_results_summary" : false },
+
+					"UPTO_LOCAL_EYE_SIGNALS" :  { "run_local_eye_signal_generation" : true,
+                                               	  "run_update_to_local_eye_signals" : true,
+                                                  "run_local_okn_detection" : false,
+                                                  "run_results_summary" : false },
+                                
+                    "TOTAL" :  { "run_local_eye_signal_generation" : true,
+								"run_update_to_local_eye_signals" : true,
+								"run_local_okn_detection" : true,
+								"run_results_summary" : true }, 
+
+					"OKNDETECTION" : { 	"run_local_eye_signal_generation" : true,
+										"run_update_to_local_eye_signals" : true,
+										"run_local_okn_detection" : true,
+										"run_results_summary" : true }, 
+
+					"RESULTS" : { 	"run_local_eye_signal_generation" : false,
+									"run_update_to_local_eye_signals" : false,
+									"run_local_okn_detection" : false,
+									"run_results_summary" : true }},
+
+
+	"okndetector" : { "configuration" : "./config/okndetector.ka2.ZAW.config" },
+
+
+
+	"filters" : [  	{ "Enabled" : false,  "input": "finalX_EyeRegion",  "output": "updated_X_EyeRegion",    "function" : "passthrough" }, 
+					{ "Enabled" : false,  "input": "finalY_EyeRegion",  "output": "updated_Y_EyeRegion",    "function" : "passthrough" },
+ 					{ "Enabled" : true,   "input": "finalX_NoseTip",    "output": "updated_X_NoseTip",      "function" : "passthrough" }, 
+					{ "Enabled" : true,   "input": "finalY_NoseTip",    "output": "updated_Y_NoseTip",      "function" : "passthrough" },
+ 					{ "Enabled" : false,  "input": "finalX_EyeCorner",  "output": "updated_X_EyeCorner",    "function" : "passthrough" }, 
+					{ "Enabled" : false,  "input": "finalY_EyeCorner",  "output": "updated_Y_EyeCorner",    "function" : "passthrough" },
+
+					{ "Enabled" : false,  "input": [ "updated_X_EyeRegion", "isBlinking" ],  "output": "updated_X_EyeRegion",  	"function" : "deblinker" }, 
+					{ "Enabled" : false,  "input": [ "updated_Y_EyeRegion", "isBlinking" ],  "output": "updated_Y_EyeRegion",   "function" : "deblinker" },
+ 					{ "Enabled" : false,  "input": [ "updated_X_NoseTip",   "isBlinking" ],  "output": "updated_X_NoseTip",     "function" : "deblinker" }, 
+					{ "Enabled" : false,  "input": [ "updated_Y_NoseTip",   "isBlinking" ],  "output": "updated_Y_NoseTip",     "function" : "deblinker" },
+ 					{ "Enabled" : false,  "input": [ "updated_X_EyeCorner", "isBlinking" ],  "output": "updated_X_EyeCorner",   "function" : "deblinker" }, 
+					{ "Enabled" : false,  "input": [ "updated_Y_EyeCorner", "isBlinking" ],  "output": "updated_Y_EyeCorner",   "function" : "deblinker" },
+
+					{ "Enabled" : false,  "input": [ "updated_X_EyeRegion", "isTracked" ],  "output": "updated_X_EyeRegion",  	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : false,  "input": [ "updated_Y_EyeRegion", "isTracked" ],  "output": "updated_Y_EyeRegion",  	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+					{ "Enabled" : true,   "input": [ "updated_X_NoseTip",   "isTracked" ],  "output": "updated_X_NoseTip",    	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : true,   "input": [ "updated_Y_NoseTip",   "isTracked" ],  "output": "updated_Y_NoseTip",    	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+					{ "Enabled" : false,  "input": [ "updated_X_EyeCorner",   "isTracked" ],  "output": "updated_X_EyeCorner",  "function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : false,  "input": [ "updated_Y_EyeCorner",   "isTracked" ],  "output": "updated_Y_EyeCorner",  "function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+				
+					{ "Enabled" : false, "input": [ "updated_X_EyeRegion", "isTracked" ],  "output": "updated_X_EyeRegion",  "function" : "wavelet", "levelForReconstruction" : [false, false, true, true, true], "type" : "sym4", "Level":4 }, 
+					{ "Enabled" : false, "input": [ "updated_Y_EyeRegion", "isTracked" ],  "output": "updated_Y_EyeRegion",  "function" : "wavelet", "levelForReconstruction" : [false, false, true, true, true], "type" : "sym4", "Level":4  },
+					{ "Enabled" : false, "input": [ "updated_X_NoseTip",   "isTracked" ],  "output": "updated_X_NoseTip",    "function" : "wavelet", "levelForReconstruction" : [false, false, true, true, true], "type" : "sym4", "Level":4  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_NoseTip",   "isTracked" ],  "output": "updated_Y_NoseTip",    "function" : "wavelet", "levelForReconstruction" : [false, false, true, true, true], "type" : "sym4", "Level":4  },
+					{ "Enabled" : false, "input": [ "updated_X_EyeCorner",   "isTracked" ],  "output": "updated_X_EyeCorner",    "function" : "wavelet", "levelForReconstruction" : [false, false, true, true, true], "type" : "sym4", "Level":4  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_EyeCorner",   "isTracked" ],  "output": "updated_Y_EyeCorner",    "function" : "wavelet", "levelForReconstruction" : [false, false, true, true, true], "type" : "sym4", "Level":4  },
+				
+
+					{ "Enabled" : false, "input": [ "currentTime", "updated_X_EyeRegion"],   "output": "updated_X_EyeRegion",  "function" : "detrender", "value" : [2, 1.0] }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_Y_EyeRegion"],   "output": "updated_Y_EyeRegion",  "function" : "detrender", "value" : [2, 1.0] },
+					{ "Enabled" : false, "input": [ "currentTime", "updated_X_NoseTip" ],    "output": "updated_X_NoseTip",    "function" : "detrender", "value" : [2, 1.0] }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_Y_NoseTip" ],    "output": "updated_Y_NoseTip",    "function" : "detrender", "value" : [2, 1.0] },
+					{ "Enabled" : false, "input": [ "currentTime", "updated_X_EyeCorner" ],  "output": "updated_X_EyeCorner",    "function" : "detrender", "value" : [2, 1.0] }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_Y_EyeCorner" ],  "output": "updated_Y_EyeCorner",    "function" : "detrender", "value" : [2, 1.0] },
+				
+					{ "input": [ "currentTime", "updated_X_EyeRegion" ],  "output": "updated_dXdt_EyeRegion",  "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_Y_EyeRegion" ],  "output": "updated_dYdt_EyeRegion",  "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_X_NoseTip" ],    "output": "updated_dXdt_NoseTip",    "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_Y_NoseTip" ],    "output": "updated_dYdt_NoseTip",    "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_X_EyeCorner" ],  "output": "updated_dXdt_EyeCorner",    "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_Y_EyeCorner" ],  "output": "updated_dYdt_EyeCorner",    "function" : "gradient" } ], 
+	
+
+
+	"showResult"   : {  "default_profile" 	: "updated_by_nosetip",
+						"time_interval"     : 10,
+						"profiles" 			: [ { "name" : "updated_by_eyeregion",  "title": "x-component (w.r.t. eye region)", "source" : "updated",    		"overlay" : false, "id": "Id",   "t" : "currentTime", "x" : "updated_X_EyeRegion", 	"v": "updated_dXdt_EyeRegion", 	"scale_factor" : 10 },  
+												{ "name" : "updated_by_nosetip",    "title": "x-component (w.r.t. nose tip)",   "source" : "updated",    		"overlay" : false, "id": "Id",   "t" : "currentTime", "x" : "updated_X_NoseTip",   	"v": "updated_dXdt_NoseTip", 	"scale_factor" : 10 },
+												{ "name" : "updated_by_eyecorner",  "title": "x-component (w.r.t. eye corner)", "source" : "updated",    		"overlay" : false, "id": "Id",   "t" : "currentTime", "x" : "updated_X_EyeCorner",  "v": "updated_dXdt_EyeCorner", 	"scale_factor" : 10 },												
+												{ "name" : "updated_velocity",     	"title": "Velocity",   						"source" : "updated",    		"overlay" : false, "id": "Id",   "t" : "currentTime", "x" : "updated_dXdt_EyeRegion", "scale_factor" : 10  }, 
+												{ "name" : "original_eyecorner",	"title": "Displacement",   					"source" : "original",   		"overlay" : false, "id": "Id",   "t" : "currentTime", "x" : "finalX_EyeCorner"  }, 
+												{ "name" : "original_nosetip", 		"title": "Displacement",   					"source" : "original",   		"overlay" : false, "id": "Id",   "t" : "currentTime", "x" : "finalX_NoseTip"  }, 											
+												{ "name" : "local_nosetip", 		"title": "Displacement",   					"source" : "local_updated", 	"overlay" : false, "id": "Id",   "t" : "currentTime", "x" : "updated_X_NoseTip"  }, 												
+												{ "name" : "local_eyecorner", 		"title": "Displacement",   					"source" : "local_updated", 	"overlay" : false, "id": "Id",   "t" : "currentTime", "x" : "updated_X_EyeCorner"  }, 												
+												{ "name" : "signal_displacement",   "title": "Displacement",  					"source" : "signalfile", 		"overlay" : true,  "id": "id",   "t" : "t", "x" : "x", "scale_factor": 10  },
+												{ "name" : "signal_ka2",   			"title": "Displacement",  					"source" : "signalfile", 		"overlay" : true,  "id": "id",   "t" : "t", "x" : "x", "scale_factor": 4  } ] },
+
+
+
+
+	"summary" : { 	"okn"   						: "okn_summary.csv", 
+					"trial" 						: "trial_summary.csv",
+					"total" 						: "total_summary.csv",
+					"best_with_matrix" 				: "best_with_matrix.csv",
+					"best_against_matrix" 			: "best_against_matrix.csv",
+					"best_summary_with_matrix" 		: "best_summary_with_matrix.csv",
+					"best_summary_against_matrix" 	: "best_summary_against_matrix.csv",
+					"final"         				: "final.mat" },
+
+
+
+	"RawPupilMap" : { "OS" : { "detectorByName" : "eye_pupil_detector_os" }, "OD" :  { "detectorByName" : "eye_pupil_detector_od" }  },
+
+
+	"Detectors" : [ 	{ "Enabled" : true,  "name" : "blink_detector", 				"detector_id" : 1,  "type" : "detectBlinkWithOpenFace", 	"short" : "isBlinking" },
+				  		{ "Enabled" : true,  "name" : "nose_tip_detector",				"detector_id" : 2,  "type" : "detectNoseTipWithOpenFace"    },
+				  		{ "Enabled" : false, "name" : "eye_region_detector_os", 		"detector_id" : 3,  "type" : "detectEyeRegionWithOpenFace", "eye" : "OS" },				  		
+				  		{ "Enabled" : true,  "name" : "eye_region_detector_od", 		"detector_id" : 4,  "type" : "detectEyeRegionWithOpenFace", "eye" : "OD" },		
+				  		{ "Enabled" : false, "name" : "eye_limbus_detector_os", 		"detector_id" : 5,  "type" : "detectLimbalEdgesWithOpenFace",  	"eye" : "OS", "blockMethod": "manual", "BlockSize" : [21,21], "MaxBidirectionalError": 1, "Border" : 0.1, "Display" : false, "Excluder" : false }, 				  				  		
+				  		{ "Enabled" : true,  "name" : "eye_limbus_detector_od", 		"detector_id" : 6,  "type" : "detectLimbalEdgesWithOpenFace",  	"eye" : "OD", "blockMethod": "manual", "BlockSize" : [21,21], "MaxBidirectionalError": 1, "Border" : 0.1, "Display" : false, "Excluder" : false }, 				  				  	
+				  		{ "Enabled" : false, "name" : "eye_limbus_detector_os_inner", 	"detector_id" : 7,  "type" : "detectEachLimbalEdge",  			"parentByName": "eye_limbus_detector_os", 	"eye" : "OS", "whichSide" : "inner"  }, 
+				  		{ "Enabled" : false, "name" : "eye_limbus_detector_os_outer", 	"detector_id" : 8,  "type" : "detectEachLimbalEdge",  			"parentByName": "eye_limbus_detector_os", 	"eye" : "OS", "whichSide" : "outer"  },
+				  		{ "Enabled" : true,  "name" : "eye_limbus_detector_od_inner", 	"detector_id" : 9,  "type" : "detectEachLimbalEdge",  			"parentByName": "eye_limbus_detector_od", 	"eye" : "OD", "whichSide" : "inner"  }, 
+				  		{ "Enabled" : true,  "name" : "eye_limbus_detector_od_outer", 	"detector_id" : 10,  "type" : "detectEachLimbalEdge",  			"parentByName": "eye_limbus_detector_od", 	"eye" : "OD", "whichSide" : "outer"  },
+				  		{ "Enabled" : false, "name" : "eye_pupil_detector_os", 			"detector_id" : 11,  "type" : "detectBrightPupilByOpenFace", 	"eye" : "OS",  "blockMethod": "manual", "blockSize" : [71,71], "MaxBidirectionalError": 1 },
+				  		{ "Enabled" : true,  "name" : "eye_pupil_detector_od", 			"detector_id" : 12,  "type" : "detectBrightPupilByOpenFace", 	"eye" : "OD",  "blockMethod": "manual", "blockSize" : [71,71], "MaxBidirectionalError": 1 }, 
+						{ "Enabled" : true,  "name" : "eye_corner_od_inner", 			"detector_id" : 13,  "type" : "detectEyeCornerWithOpenFace", 	"eye" : "OS",  "whichCorner" : "inner", "blockMethod": "manual", "BlockSize" : [31,31], "MaxBidirectionalError": 1 },
+				  		{ "Enabled" : true,  "name" : "eye_corner_od_outer", 			"detector_id" : 14,  "type" : "detectEyeCornerWithOpenFace", 	"eye" : "OD",  "whichCorner" : "outer", "blockMethod": "manual", "BlockSize" : [31,31], "MaxBidirectionalError": 1 } ],		
+
+	"Trackers" : [		{ "Enabled" : false, "name": "eye_region_tracker_os", 	"TrackerId" : 1, 	"short": "EyeRegion",	"write" : false,  	"type" : "EyeRegionTracker", 	"eye" : "OS", 	"CheckMaxDeparture": false, "detectorByName" : "eye_region_detector_os" },				   	 
+				   	 	{ "Enabled" : true,  "name": "eye_region_tracker_od",   "TrackerId" : 2, 	"short": "EyeRegion",	"write" : false, 	"type" : "EyeRegionTracker", 	"eye" : "OD", 	"CheckMaxDeparture": false, "detectorByName" : "eye_region_detector_od" },
+						{ "Enabled" : true,  "name": "nose_tracker", 			"TrackerId" : 3, 	"short": "NoseXY",  	"write" : false, 	"type" : "NoseTipTracker", 					"CheckMaxDeparture": true,  "MaxDepartureFromDetected" : 3,   "detectorByName" : "nose_tip_detector" },
+						{ "Enabled" : false, "name": "eye_pupil_tracker_os", 	"TrackerId" : 4, 	"short": "PupilXY",  	"suffix" : "pupil.os", "write" : true, 			"type" : "EyePupilTracker",  	"eye" : "OS",	"CheckMaxDeparture": true,  "MaxDepartureFromDetected" : 3,   "detectorByName" : "eye_pupil_detector_os" },
+				 		{ "Enabled" : true,  "name": "eye_pupil_tracker_od", 	"TrackerId" : 5, 	"short": "PupilXY",  	"suffix" : "pupil.od", "write" : true, 			"type" : "EyePupilTracker",  	"eye" : "OD",	"CheckMaxDeparture": true,  "MaxDepartureFromDetected" : 3,   "detectorByName" : "eye_pupil_detector_od" },
+				 		{ "Enabled" : false, "name": "limbus_tracker_os_inner", "TrackerId" : 6, 	"short": "LimbusXY", 	"suffix" : "limbus.os.inner", "write" : true,  	"type" : "EyeLimbusTracker", 	"eye" : "OS", 	"CheckMaxDeparture": true,  "MaxDepartureFromDetected" : 3,   "detectorByName" : "eye_limbus_detector_os_inner" },
+				   	 	{ "Enabled" : false, "name": "limbus_tracker_os_outer", "TrackerId" : 7, 	"short": "LimbusXY", 	"suffix" : "limbus.os.outer", "write" : true,  	"type" : "EyeLimbusTracker", 	"eye" : "OS", 	"CheckMaxDeparture": true,  "MaxDepartureFromDetected" : 3,   "detectorByName" : "eye_limbus_detector_os_outer"},
+				 		{ "Enabled" : true,  "name": "limbus_tracker_od_inner", "TrackerId" : 8, 	"short": "LimbusXY", 	"suffix" : "limbus.od.inner", "write" : true, 	"type" : "EyeLimbusTracker", 	"eye" : "OD", 	"CheckMaxDeparture": true,  "MaxDepartureFromDetected" : 3,   "detectorByName" : "eye_limbus_detector_od_inner" },
+				   	 	{ "Enabled" : true,  "name": "limbus_tracker_od_outer", "TrackerId" : 9, 	"short": "LimbusXY", 	"suffix" : "limbus.od.outer", "write" : true, 	"type" : "EyeLimbusTracker", 	"eye" : "OD", 	"CheckMaxDeparture": true,  "MaxDepartureFromDetected" : 3,   "detectorByName" : "eye_limbus_detector_od_outer"} ],
+
+
+	"Annotators" : [  	{ "Enabled" : true,   "name": "eye_region_insert", 	  "type": "eye_region_insert", 	"trackerByName" : "eye_region_tracker_od", "eye" : "OD", "position" : [-300,-150, 150, 150], "title" : "OD" }, 
+						{ "Enabled" : false,  "name": "eye_region_insert", 	  "type": "eye_region_insert", 	"trackerByName" : "eye_region_tracker_os", "eye" : "OS", "position" : [-150,-150, 150, 150], "title" : "OS" },
+						{ "Enabled" : true,   "name": "nose_tip",  		 	  "type": "nose_tip", 			"trackerByName" : "nose_tracker" },
+						{ "Enabled" : false,  "name": "eye_pupil_os",  	 	  "type": "eye_pupil", 			"trackerByName" : "eye_pupil_tracker_os", "color"  : "green"  },
+						{ "Enabled" : true,   "name": "eye_pupil_od",  	 	  "type": "eye_pupil", 			"trackerByName" : "eye_pupil_tracker_od", "color"  : "green"  },
+						{ "Enabled" : false,  "name": "eye_corner_od_inner",  "type": "eye_corner", 		"trackerByName" : "eye_corner_tracker_od_inner", "color" : "yellow" },
+						{ "Enabled" : true,   "name": "eye_corner_od_outer",  "type": "eye_corner", 		"trackerByName" : "eye_corner_tracker_od_outer", "color" : "red" },
+						{ "Enabled" : false,  "name": "eye_limbus_os_inner",  "type": "eye_limbus", 		"trackerByName" : "limbus_tracker_os_inner", "color" : "magenta" },
+						{ "Enabled" : false,  "name": "eye_limbus_os_outer",  "type": "eye_limbus", 		"trackerByName" : "limbus_tracker_os_outer", "color" : "magenta"  },
+						{ "Enabled" : true,   "name": "eye_limbus_od_inner",  "type": "eye_limbus", 		"trackerByName" : "limbus_tracker_od_inner", "color" : "magenta"  },
+						{ "Enabled" : true,   "name": "eye_limbus_od_outer",  "type": "eye_limbus", 		"trackerByName" : "limbus_tracker_od_outer", "color" : "magenta"  },
+						{ "Enabled" : true,   "name": "timer",  	   		  "type": "timer", 				"position" : [ 0, -30], "width" : 100, "height" : 100, "title" : "OS" } ],
+
+
+
+
+    "processList" : [	{{#processlist}}{ "keep" : {{keep}}, "stimulus_id": "{{stimulus_id}}", "id": {{id}}, "order": {{order}}, "name" : "{{name}}", "group": {{group}},  "level" :  {{level}},  "direction" :  {{direction}},  "input_video" : "{{{video}}}", "input_features" : "{{{features}}}" }{{^islast}},{{/islast}}
+    	{{/processlist}}]
+			
+}

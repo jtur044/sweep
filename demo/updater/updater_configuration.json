@@ -1,0 +1,155 @@
+{	
+
+    // note: load this JSON with "load_commented_json.m" to strip comments 
+
+
+	"filters" : [  	{ "Enabled" : true, "input": "finalX_EyeRegion",  "output": "updated_X_EyeRegion",    "function" : "passthrough" }, 
+					{ "Enabled" : true, "input": "finalY_EyeRegion",  "output": "updated_Y_EyeRegion",    "function" : "passthrough" },
+ 					{ "Enabled" : true, "input": "finalX_NoseTip",    "output": "updated_X_NoseTip",      "function" : "passthrough" }, 
+					{ "Enabled" : true, "input": "finalY_NoseTip",    "output": "updated_Y_NoseTip",      "function" : "passthrough" },
+ 					{ "Enabled" : true, "input": "finalX_EyeCorner",  "output": "updated_X_EyeCorner",    "function" : "passthrough" }, 
+					{ "Enabled" : true, "input": "finalY_EyeCorner",  "output": "updated_Y_EyeCorner",    "function" : "passthrough" },
+                    { "Enabled" : true, "input": "finalX_BaseLine",   "output": "updated_X_BaseLine",     "function" : "passthrough" }, 
+					{ "Enabled" : true, "input": "finalY_BaseLine",   "output": "updated_Y_BaseLine",     "function" : "passthrough" },
+					{ "Enabled" : true, "input": "limbusX_NoseTip",   "output": "updated_limbusX_NoseTip", "function" : "passthrough" }, 
+					{ "Enabled" : true, "input": "limbusY_NoseTip",   "output": "updated_limbusY_NoseTip", "function" : "passthrough" },
+					{ "Enabled" : true, "input": "limbusX_EyeCorner",   "output": "updated_limbusX_EyeCorner", "function" : "passthrough" }, 
+					{ "Enabled" : true, "input": "limbusY_EyeCorner",   "output": "updated_limbusY_EyeCorner", "function" : "passthrough" }, 
+
+
+					// remove blinking areas 
+
+					{ "Enabled" : true,  "input": [ "updated_X_EyeRegion", "isBlinking" ],  "output": "updated_X_EyeRegion",  "function" : "applymask" }, 
+					{ "Enabled" : true,  "input": [ "updated_Y_EyeRegion", "isBlinking" ],  "output": "updated_Y_EyeRegion",  "function" : "applymask" },
+ 					{ "Enabled" : true,  "input": [ "updated_X_NoseTip",   "isBlinking" ],  "output": "updated_X_NoseTip",    "function" : "applymask" }, 
+					{ "Enabled" : true,  "input": [ "updated_Y_NoseTip",   "isBlinking" ],  "output": "updated_Y_NoseTip",    "function" : "applymask" },
+ 					{ "Enabled" : true,  "input": [ "updated_X_EyeCorner", "isBlinking" ],  "output": "updated_X_EyeCorner",  "function" : "applymask" }, 
+					{ "Enabled" : true,  "input": [ "updated_Y_EyeCorner", "isBlinking" ],  "output": "updated_Y_EyeCorner",  "function" : "applymask" },
+ 					{ "Enabled" : true,  "input": [ "updated_X_BaseLine",  "isBlinking" ],   "output": "updated_X_BaseLine",   "function" : "applymask" }, 
+					{ "Enabled" : true,  "input": [ "updated_Y_BaseLine",  "isBlinking" ],   "output": "updated_Y_BaseLine",   "function" : "applymask" },
+					{ "Enabled" : true,  "input": [ "updated_limbusX_NoseTip",  "isBlinking" ],   "output": "updated_limbusX_NoseTip",   "function" : "applymask" }, 
+					{ "Enabled" : true,  "input": [ "updated_limbusY_NoseTip",  "isBlinking" ],   "output": "updated_limbusY_NoseTip",   "function" : "applymask" },
+					{ "Enabled" : true,  "input": [ "updated_limbusX_EyeCorner",  "isBlinking" ],   "output": "updated_limbusX_EyeCorner",   "function" : "applymask" }, 
+					{ "Enabled" : true,  "input": [ "updated_limbusY_EyeCorner",  "isBlinking" ],   "output": "updated_limbusY_EyeCorner",   "function" : "applymask" },
+
+					// remove tracked areas 
+
+					{ "Enabled" : true,  "input": [ "updated_X_EyeRegion", "isTracked" ],  "output": "updated_X_EyeRegion",  "function" : "applymask", "reverse" : true }, 
+					{ "Enabled" : true,  "input": [ "updated_Y_EyeRegion", "isTracked" ],  "output": "updated_Y_EyeRegion",  "function" : "applymask", "reverse" : true },
+ 					{ "Enabled" : true,  "input": [ "updated_X_NoseTip",   "isTracked" ],  "output": "updated_X_NoseTip",    "function" : "applymask", "reverse" : true }, 
+					{ "Enabled" : true,  "input": [ "updated_Y_NoseTip",   "isTracked" ],  "output": "updated_Y_NoseTip",    "function" : "applymask", "reverse" : true },
+ 					{ "Enabled" : true,  "input": [ "updated_X_EyeCorner", "isTracked" ],  "output": "updated_X_EyeCorner",  "function" : "applymask", "reverse" : true }, 
+					{ "Enabled" : true,  "input": [ "updated_Y_EyeCorner", "isTracked" ],  "output": "updated_Y_EyeCorner",  "function" : "applymask", "reverse" : true },
+ 					{ "Enabled" : true,  "input": [ "updated_X_BaseLine", "isTracked" ],   "output": "updated_X_BaseLine",   "function" : "applymask", "reverse" : true }, 
+					{ "Enabled" : true,  "input": [ "updated_Y_BaseLine", "isTracked" ],   "output": "updated_Y_BaseLine",   "function" : "applymask", "reverse" : true },
+ 					{ "Enabled" : true,  "input": [ "updated_limbusX_NoseTip", "isTracked" ],   "output": "updated_limbusX_NoseTip",   "function" : "applymask", "reverse" : true }, 
+					{ "Enabled" : true,  "input": [ "updated_limbusY_NoseTip", "isTracked" ],   "output": "updated_limbusY_NoseTip",   "function" : "applymask", "reverse" : true },
+ 					{ "Enabled" : true,  "input": [ "updated_limbusX_EyeCorner", "isTracked" ],   "output": "updated_limbusX_EyeCorner",   "function" : "applymask", "reverse" : true }, 
+					{ "Enabled" : true,  "input": [ "updated_limbusY_EyeCorner", "isTracked" ],   "output": "updated_limbusY_EyeCorner",   "function" : "applymask", "reverse" : true },
+
+					// tidy 
+
+					{ "Enabled" : false, "input": [ "updated_X_EyeRegion", "isTracked" ],  "output": "updated_X_EyeRegion",  	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_EyeRegion", "isTracked" ],  "output": "updated_Y_EyeRegion",  	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+					{ "Enabled" : false, "input": [ "updated_X_NoseTip",   "isTracked" ],  "output": "updated_X_NoseTip",    	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_NoseTip",   "isTracked" ],  "output": "updated_Y_NoseTip",    	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+					{ "Enabled" : false, "input": [ "updated_X_EyeCorner", "isTracked" ],  "output": "updated_X_EyeCorner",   	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_EyeCorner", "isTracked" ],  "output": "updated_Y_EyeCorner",   	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+					{ "Enabled" : false, "input": [ "updated_X_BaseLine", "isTracked" ],   "output": "updated_X_BaseLine",    	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_BaseLine", "isTracked" ],   "output": "updated_Y_BaseLine",    	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+					{ "Enabled" : false, "input": [ "updated_limbusX_NoseTip", "isTracked" ],   "output": "updated_limbusX_NoseTip",    	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : false, "input": [ "updated_limbusY_NoseTip", "isTracked" ],   "output": "updated_limbusY_NoseTip",    	"function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+					{ "Enabled" : false, "input": [ "updated_limbusX_EyeCorner", "isTracked" ],   "output": "updated_limbusX_EyeCorner",    "function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  }, 
+					{ "Enabled" : false, "input": [ "updated_limbusY_EyeCorner", "isTracked" ],   "output": "updated_limbusY_EyeCorner",    "function" : "tidy", "value" : [10, 5, 3], "thicken" : 3  },
+				
+					// Median filter (Noise Removal)
+
+					{ "Enabled" : true, "input": [ "updated_X_EyeRegion" ],  "output" : "updated_X_EyeRegion",   "function" : "medianFilter",  "npoint" : 3  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_EyeRegion" ],  "output" : "updated_Y_EyeRegion",   "function" : "medianFilter",  "npoint" : 3  },
+					{ "Enabled" : true, "input": [ "updated_X_NoseTip"   ],  "output" : "updated_X_NoseTip",     "function" : "medianFilter",  "npoint" : 3  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_NoseTip"   ],  "output" : "updated_Y_NoseTip",     "function" : "medianFilter",  "npoint" : 3  },
+					{ "Enabled" : true, "input": [ "updated_X_EyeCorner" ],  "output" : "updated_X_EyeCorner",   "function" : "medianFilter",  "npoint" : 3  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_EyeCorner" ],  "output" : "updated_Y_EyeCorner",   "function" : "medianFilter",  "npoint" : 3  },
+					{ "Enabled" : true, "input": [ "updated_X_BaseLine" ],   "output" : "updated_X_BaseLine",    "function" : "medianFilter" , "npoint" : 3 }, 
+					{ "Enabled" : true, "input": [ "updated_Y_BaseLine" ],   "output" : "updated_Y_BaseLine",    "function" : "medianFilter",  "npoint" : 3  },
+					{ "Enabled" : true, "input": [ "updated_limbusX_NoseTip" ],   "output" : "updated_limbusX_NoseTip",    "function" : "medianFilter", "npoint" : 3  }, 
+					{ "Enabled" : true, "input": [ "updated_limbusY_NoseTip" ],   "output" : "updated_limbusY_NoseTip",    "function" : "medianFilter", "npoint" : 3  },
+					{ "Enabled" : true, "input": [ "updated_limbusX_EyeCorner" ], "output" : "updated_limbusX_EyeCorner",  "function" : "medianFilter", "npoint" : 3  }, 
+					{ "Enabled" : true, "input": [ "updated_limbusY_EyeCorner" ], "output" : "updated_limbusY_EyeCorner",  "function" : "medianFilter", "npoint" : 3  },
+
+
+					// Spike Removal 
+
+					{ "Enabled" : false, "input": [ "updated_X_EyeRegion" ],  "output" : "updated_X_EyeRegion",   			"function" : "spikeRemover", "direction" : "down"  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_EyeRegion" ],  "output" : "updated_Y_EyeRegion",   			"function" : "spikeRemover", "direction" : "down"  },
+					{ "Enabled" : false, "input": [ "updated_X_NoseTip"   ],  "output" : "updated_X_NoseTip",     			"function" : "spikeRemover", "direction" : "down"  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_NoseTip"   ],  "output" : "updated_Y_NoseTip",     			"function" : "spikeRemover", "direction" : "down"  },
+					{ "Enabled" : false, "input": [ "updated_X_EyeCorner" ],  "output" : "updated_X_EyeCorner",   			"function" : "spikeRemover", "direction" : "down"  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_EyeCorner" ],  "output" : "updated_Y_EyeCorner",   			"function" : "spikeRemover", "direction" : "down"  },
+					{ "Enabled" : false, "input": [ "updated_X_BaseLine" ],   "output" : "updated_X_BaseLine",    			"function" : "spikeRemover", "direction" : "down"  }, 
+					{ "Enabled" : false, "input": [ "updated_Y_BaseLine" ],   "output" : "updated_Y_BaseLine",    			"function" : "spikeRemover", "direction" : "down"  },
+					{ "Enabled" : false, "input": [ "updated_limbusX_NoseTip" ],   "output" : "updated_limbusX_NoseTip",    "function" : "spikeRemover", "direction" : "down"  }, 
+					{ "Enabled" : false, "input": [ "updated_limbusY_NoseTip" ],   "output" : "updated_limbusY_NoseTip",    "function" : "spikeRemover", "direction" : "down"  },
+					{ "Enabled" : false, "input": [ "updated_limbusX_EyeCorner" ], "output" : "updated_limbusX_EyeCorner",  "function" : "spikeRemover", "direction" : "down"  }, 
+					{ "Enabled" : false, "input": [ "updated_limbusY_EyeCorner" ], "output" : "updated_limbusY_EyeCorner",  "function" : "spikeRemover", "direction" : "down"  },
+
+
+					// Wavelet Filtering 
+
+					{ "Enabled" : true, "input": [ "updated_X_EyeRegion",  "isTracked" ],  "output": "updated_X_EyeRegion",  "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4 }, 
+					{ "Enabled" : true, "input": [ "updated_Y_EyeRegion",  "isTracked" ],  "output": "updated_Y_EyeRegion",  "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  },
+					{ "Enabled" : true, "input": [ "updated_X_NoseTip",    "isTracked" ],  "output": "updated_X_NoseTip",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_NoseTip",    "isTracked" ],  "output": "updated_Y_NoseTip",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  },
+					{ "Enabled" : true, "input": [ "updated_X_EyeCorner",  "isTracked" ],  "output": "updated_X_EyeCorner",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_EyeCorner",  "isTracked" ],  "output": "updated_Y_EyeCorner",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  },
+					{ "Enabled" : true, "input": [ "updated_X_BaseLine",   "isTracked" ],  "output": "updated_X_BaseLine",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_BaseLine",   "isTracked" ],  "output": "updated_Y_BaseLine",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  },				
+					{ "Enabled" : true, "input": [ "updated_limbusX_NoseTip",   "isTracked" ],  "output": "updated_limbusX_NoseTip",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  }, 
+					{ "Enabled" : true, "input": [ "updated_limbusY_NoseTip",   "isTracked" ],  "output": "updated_limbusY_NoseTip",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  },
+					{ "Enabled" : true, "input": [ "updated_limbusX_EyeCorner",   "isTracked" ],  "output": "updated_limbusX_EyeCorner",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  }, 
+					{ "Enabled" : true, "input": [ "updated_limbusY_EyeCorner",   "isTracked" ],  "output": "updated_limbusY_EyeCorner",    "function" : "wavelet", "levelForReconstruction" : [false, true, true, true, true], "type" : "sym4", "Level":4  },
+
+					// Shift signal 
+
+					{ "Enabled" : true, "input": [ "updated_X_EyeRegion" ],  "output" : "updated_X_EyeRegion",   		"function" : "shiftSignal"  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_EyeRegion" ],  "output" : "updated_Y_EyeRegion",   		"function" : "shiftSignal"  },
+					{ "Enabled" : true, "input": [ "updated_X_NoseTip"   ],  "output" : "updated_X_NoseTip",     		"function" : "shiftSignal"  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_NoseTip"   ],  "output" : "updated_Y_NoseTip",     		"function" : "shiftSignal"  },
+					{ "Enabled" : true, "input": [ "updated_X_EyeCorner" ],  "output" : "updated_X_EyeCorner",   		"function" : "shiftSignal"  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_EyeCorner" ],  "output" : "updated_Y_EyeCorner",   		"function" : "shiftSignal"  },
+					{ "Enabled" : true, "input": [ "updated_X_BaseLine" ],   "output" : "updated_X_BaseLine",    		"function" : "shiftSignal"  }, 
+					{ "Enabled" : true, "input": [ "updated_Y_BaseLine" ],   "output" : "updated_Y_BaseLine",    		"function" : "shiftSignal"  },
+					{ "Enabled" : true, "input": [ "updated_limbusX_NoseTip" ],   "output" : "updated_limbusX_NoseTip",    "function" : "shiftSignal"  }, 
+					{ "Enabled" : true, "input": [ "updated_limbusY_NoseTip" ],   "output" : "updated_limbusY_NoseTip",    "function" : "shiftSignal"  },
+					{ "Enabled" : true, "input": [ "updated_limbusX_EyeCorner" ], "output" : "updated_limbusX_EyeCorner",  "function" : "shiftSignal"  }, 
+					{ "Enabled" : true, "input": [ "updated_limbusY_EyeCorner" ], "output" : "updated_limbusY_EyeCorner",  "function" : "shiftSignal"  },
+
+					// Trend Removal 
+
+					{ "Enabled" : false, "input": [ "currentTime", "updated_X_EyeRegion"],   "output": "updated_X_EyeRegion",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_Y_EyeRegion"],   "output": "updated_Y_EyeRegion",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 },
+					{ "Enabled" : false, "input": [ "currentTime", "updated_X_NoseTip" ],    "output": "updated_X_NoseTip",      "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_Y_NoseTip" ],    "output": "updated_Y_NoseTip",      "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 },
+					{ "Enabled" : false, "input": [ "currentTime", "updated_X_EyeCorner" ],  "output": "updated_X_EyeCorner",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_Y_EyeCorner" ],  "output": "updated_Y_EyeCorner",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 },
+                    { "Enabled" : false, "input": [ "currentTime", "updated_X_BaseLine" ],  "output": "updated_X_BaseLine",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_Y_BaseLine" ],  "output": "updated_Y_BaseLine",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 },
+			        { "Enabled" : false, "input": [ "currentTime", "updated_limbusX_NoseTip" ],  "output": "updated_limbusX_NoseTip",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_limbusY_NoseTip" ],  "output": "updated_limbusY_NoseTip",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 },
+				    { "Enabled" : false, "input": [ "currentTime", "updated_limbusX_EyeCorner" ],  "output": "updated_limbusX_EyeCorner",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 }, 
+					{ "Enabled" : false, "input": [ "currentTime", "updated_limbusY_EyeCorner" ],  "output": "updated_limbusY_EyeCorner",    "function" : "detrender", "polyorder" :2 , "min_duration" : 1.0 },
+				
+					{ "input": [ "currentTime", "updated_X_EyeRegion" ],  "output": "updated_dXdt_EyeRegion",  "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_Y_EyeRegion" ],  "output": "updated_dYdt_EyeRegion",  "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_X_NoseTip" ],    "output": "updated_dXdt_NoseTip",    "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_Y_NoseTip" ],    "output": "updated_dYdt_NoseTip",    "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_X_EyeCorner" ],  "output": "updated_dXdt_EyeCorner",    "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_Y_EyeCorner" ],  "output": "updated_dYdt_EyeCorner",    "function" : "gradient" },
+					{ "input": [ "currentTime", "updated_X_BaseLine" ],   "output": "updated_dXdt_BaseLine",    "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_Y_BaseLine" ],   "output": "updated_dYdt_BaseLine",    "function" : "gradient" },
+					{ "input": [ "currentTime", "updated_limbusX_NoseTip" ],   "output": "updated_limbusdXdt_NoseTip",   "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_limbusY_NoseTip" ],   "output": "updated_limbusdYdt_NoseTip",   "function" : "gradient" },
+					{ "input": [ "currentTime", "updated_limbusX_EyeCorner" ],   "output": "updated_limbusdXdt_EyeCorner",   "function" : "gradient" }, 
+					{ "input": [ "currentTime", "updated_limbusY_EyeCorner" ],   "output": "updated_limbusdYdt_EyeCorner",   "function" : "gradient" } ] 
+
+}

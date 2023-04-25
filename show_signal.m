@@ -1,0 +1,143 @@
+function [y0, h] = show_signal (dataTable, profile, varargin)
+
+% SHOW_SIGNAL Show the SIGNAL file.
+%
+%   [y0, h] = show_signal (filename)
+%
+% where 
+%
+%    filename   is the name of the SIGNAL file (signal.csv)
+%
+
+    p = inputParser ();
+    
+    p.addOptional ('Title', []);
+    p.parse(varargin{:});
+    res = p.Results;
+    
+    %if (nargin == 2)
+        tp = 0;
+        yp = 0;
+    %end
+    
+    
+    if (~isfield(profile, 'mean_shift'))
+        profile.mean_shift = true;
+    end
+    
+
+    %% load data     
+    % data = readtable (filename);
+    
+    t = dataTable.t_local;
+    x = dataTable.x;
+    v = dataTable.v;
+                
+    if (isfield(profile, 'scale_factor'))
+        hp = profile.scale_factor;
+    else
+        hp = 1;
+    end
+    
+    %% plot information     
+    t0 = tp + (t-t(1));
+    y0 = yp + hp*(x - mean(x, 'omitnan'));
+    if (profile.mean_shift)
+        h(1) = plot (t0, y0, 'LineWidth', 1.5);
+        hold on;
+    else
+        h(1) = plot (t0, y0, 'LineWidth', 1.5);
+        hold on;
+    end
+    set(h(1), 'Tag', 'dataline');
+
+    
+    %% baseline information 
+    % h(2) = line([tp tp+(t(end)-t(1))], [yp yp],  'LineWidth', 1, 'LineStyle', '--');
+    % hold on;
+    % set(h(2), 'Tag', 'zeroline');
+    set(h,'Color','k');
+    
+    
+    
+    %% if displayTitle is shown then show it!
+    if (isfield(profile, 'displayTitle'))    
+        
+        if (~isempty(res.Title))
+        
+        h(3) = text(tp, yp + 0.05, res.Title, 'Interpreter','none');
+        set(h(3), 'FontSize', 8);
+        set(h(3), 'Color', 'r');
+        set(h(3), 'Tag', 'title');        
+        end
+    end
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%
+    %% OVERLAY 
+    %%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+    
+    r     = dataTable.result_id;
+    is_sp = cellfun(@(x) strcmp(x, 'true'), dataTable.is_sp);
+    is_qp = cellfun(@(x) strcmp(x, 'true'), dataTable.is_qp);
+        
+    
+    
+    %% add in overlay      
+    r_0   = unique(r);
+    is_ok = ~(r_0 == -1);
+    r_0   = r_0(is_ok);
+    
+    t_start = t(1);
+    
+    for k = 1:length(r_0)
+    
+        
+        %% get the sp 
+                
+        i = (r == r_0(k)) & is_sp;
+        
+        %% (t_0, x_0) information 
+        t_0 = tp + (t(i) - t_start);                   
+        
+        if (profile.mean_shift)
+            x_0 = yp + hp*(x(i) - mean(x, 'omitnan'));  
+        else
+            x_0 = yp + hp*x(i);  
+        end
+        hold on;
+
+        %h(1) = plot (t_0, x_0, 'LineWidth', 1.5);
+        
+        h(3) = line (t_0, x_0, 'LineWidth',3,'LineStyle','-','color','g');
+        set(h(3), 'Tag', 'sp');
+        
+        
+        %% get the qp 
+        
+        i = (r == r_0(k)) & is_qp;
+        
+        t_00 = tp + (t(i) - t_start);             
+        t_0 = [ t_0(end) ; t_00 ];        
+        
+        if (profile.mean_shift)
+            x_00 = yp + hp*(x(i) - mean(x, 'omitnan'));  
+            x_0  = [ x_0(end) ; x_00 ];
+        else
+            x_00 = yp + hp*x(i);  
+            x_0  = [ x_0(end) ; x_00 ];
+
+        end
+        hold on;
+        
+        % h(2) = plot (t_0, x_0, 'LineWidth', 1.5);
+                
+        h(4) = line (t_0, x_0, 'LineWidth',3,'LineStyle','-','color','r');
+        set(h(4), 'Tag', 'qp');
+
+        
+    end
+         
+end

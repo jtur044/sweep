@@ -1,0 +1,56 @@
+function final = recursive_load (filepath, filename)
+
+
+%% RECURSIVE_LOAD Traverse down the tree looking for file-pattern 
+%
+%   y = recursive_load (filename)
+% 
+% where 
+%       this_dir    is the branch directory 
+%       root_dir    is the main directory 
+%       setupfile   is the file to merge (setup.config)
+%
+% 
+
+    
+
+   thiscd = cd();   
+   fullname = fullfile (pwd, filename);
+   
+   while (~isempty(filepath))
+          
+      eachfile = fullfile(filepath, filename)        
+      if (exist (eachfile, 'file'))
+    
+          disp ('found.');
+          
+          final = loader (eachfile);
+          return          
+      end
+
+      disp('');
+      
+      filepath
+      thiscd
+      
+      % checker 
+      if (strcmpi (filepath, thiscd)) 
+          final = [];
+          return
+      end
+      
+      % shorten the filepath 
+      [filepath, ~, ~] = fileparts (filepath);
+       
+      
+end
+    
+
+
+
+
+
+
+
+
+
