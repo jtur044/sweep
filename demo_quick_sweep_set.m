@@ -78,6 +78,10 @@ for k = 1:N
             ret_info_2(k) = analyze_bidrectional_interlaced_sweep (descend_odd_Tbl, ascend_even_Tbl, info);
             show_bidirectional_sweep (descend_odd_Tbl, ascend_even_Tbl, VA_ETDRS, info)
     
+        else 
+
+            fprintf ('sweep not found ... %s\n', each_sweep_dir);
+
         end 
 
     end

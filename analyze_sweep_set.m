@@ -1,85 +1,26 @@
-function finalTbl = demo_analyze_combined_sweep_set
+function ret_info = analyze_sweep_set (input_dir, info)
 
+% ANALYZE_SWEEP_SET 
+%
+%   finalTbl = analyze_sweep_set (varargin)
+%
+% where 
+%       finalTbl is 
+%
+%
 
-close all;
+p = inputParser ();
 
-maindir = './DATA';
+%% default 
 
-
-%% Christo 
-
-VA_ETDRS = 0.0;
-sweep_set = 'Aug2/cfra_02_08_2023_sweep_left';
-%sweep_set = 'Aug2/cfra_02_08_2023_sweep_right';
-
-%% Jason Multiple 
-
-%VA_ETDRS = 0.47;
-%sweep_set = '22Mar2023/jtur_22_03_2023_five_sweep_len_from_4_to_0_two';
-%sweep_set = '22Mar2023/jtur_22_03_2023_five_sweep_len_from_4_to_0';
-
-%{
-
-VA_ETDRS = -0.08;
-sweep_set = '16Mar2023/sgui_16_03_2023_sweep_5_times_no_len';
-
-%}
-
-
-
-
-%% Shadi Sweep Set 1
-%{
-
-VA_ETDRS = 0.5;
-sweep_set = '12Mar2023/sela_12_03_2023_okn_sweep_five_times_lens_two';
-
-VA_ETDRS = -0.04;
-sweep_set = '12Mar2023/sela_12_03_2023_okn_sweep_five_times_no_lens_two';
-
-%}
-
-%{
-
-%% Sarah-Jane DAY 2
-
-
-VA_ETDRS = 0.47;
-sweep_set = '16Mar2023/sgui_16_03_2023_sweep_5_times_power_2_25';
-
-VA_ETDRS = -0.08;
-sweep_set = '16Mar2023/sgui_16_03_2023_sweep_5_times_no_len';
-
-
-%}
-
-
-
-%% Sarah-Jane DAY 1
-
-%{
-
-VA_ETDRS = 0.47;
-sweep_set = '14March2023/sgui_14_march_2023_with_lens2_25';
-
-VA_ETDRS = -0.08;
-sweep_set = '16Mar2023/sgui_14_march_2023_without_lens_2';
-
-%}
-
-
-
-%% Informational 
-
-info.max_logMAR  = 1.0;
-info.min_logMAR  = 0.0;
-info.logmar_step = 0.1;
-info.win_length  = 2;
-info.ratio       = 0.1/2;
-info.FontSize    = 18;
-
-info.lower_threshold = 0.25;
-info.upper_threshold = 0.75;
+% info.max_logMAR  = 1.0;
+% info.min_logMAR  = 0.0;
+% info.logmar_step = 0.1;
+% info.win_length  = 2;
+% info.ratio       = 0.1/2;
+% info.FontSize    = 18;
+% info.lower_threshold = 0.25;
+% info.upper_threshold = 0.75;
 
 % VA_ETDRS = 0;
 
@@ -102,7 +43,7 @@ for k = 1:N
 
     %% everything was OK
 
-    each_bisweep_dir = fullfile (maindir, sweep_set, trial_dir);     
+    each_bisweep_dir = fullfile (input_dir, trial_dir);     
     each_bisweep_trial = sweep_trials {k};
 
     %if (check_required_dir (each_bisweep_dir))
@@ -120,7 +61,7 @@ for k = 1:N
         ascendTbl  = readtable (ascend_datafile);
         
         ret_info(k) = analyze_bidrectional_sweep (descendTbl, ascendTbl, info);
-        show_bidirectional_sweep (descendTbl, ascendTbl, VA_ETDRS, info)
+        %show_bidirectional_sweep (descendTbl, ascendTbl, VA_ETDRS, info)
 
     %end 
 
@@ -129,26 +70,23 @@ end
 % ret_info.ascending
 % ret_info
 
-
 %% columns 
-meanVA      = [ ret_info.meanVA ];       meanVA = meanVA(:);
-ascendData  = [ ret_info.ascending ];    
-descendData = [ ret_info.descending ];   
+%meanVA      = [ ret_info.meanVA ];       meanVA = meanVA(:);
+%ascendData  = [ ret_info.ascending ];    
+%descendData = [ ret_info.descending ];   
 
-ascendVA    = [ ascendData.VA ];  ascendVA = ascendVA (:);
-descendVA   = [ descendData.VA ]; descendVA = descendVA (:);
-pickupTime  = [ ascendData.t ];  pickupTime = pickupTime (:);
-dropoffTime = [ descendData.t ]; dropoffTime = dropoffTime (:);
+%ascendVA    = [ ascendData.VA ];  ascendVA = ascendVA (:);
+%descendVA   = [ descendData.VA ]; descendVA = descendVA (:);
+%pickupTime  = [ ascendData.t ];  pickupTime = pickupTime (:);
+%dropoffTime = [ descendData.t ]; dropoffTime = dropoffTime (:);
 
 
-finalTbl = table (meanVA, ascendVA, descendVA, pickupTime, dropoffTime);
+%finalTbl = table (meanVA, ascendVA, descendVA, pickupTime, dropoffTime);
 %finalTbl.isValid = (descendVA < ascendVA);
 %isValid = finalTbl.isValid;
 
-fprintf ('mean   = %4.2f\n', mean(finalTbl.meanVA));
-fprintf ('95%% CI = %4.2f]\n', 1.96*std(finalTbl.meanVA));
-
-
+%fprintf ('mean   = %4.2f\n', mean(finalTbl.meanVA));
+%fprintf ('95%% CI = %4.2f]\n', 1.96*std(finalTbl.meanVA));
 
 %finalTbl
 
@@ -231,9 +169,6 @@ ret_info.ascending.k  = k;
 ret_info.ascending.activity = [ t r q ];
 
 ret_info.meanVA = 0.5*(ret_info.ascending.VA + ret_info.descending.VA);
-
-
-
 
 end
 

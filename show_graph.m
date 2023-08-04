@@ -38,10 +38,10 @@ function h = show_graph(dataTable, profile, tp, yp, varargin)
     %% plot information     
     
     if (profile.mean_shift)
-        h(1) = plot (tp + (t-t(1)), yp + hp*(x - mean(x, 'omitnan')), 'LineWidth', 1.5);
+        h(1) = plot (tp + (t-t(1)), yp + hp*(x - mean(x, 'omitnan')), 'LineWidth', 1.75);
         hold on;
     else
-        h(1) = plot (tp + (t-t(1)), yp + hp*x, 'LineWidth', 1.5);
+        h(1) = plot (tp + (t-t(1)), yp + hp*x, 'LineWidth', 1.75);
         hold on;
     end
     set(h(1), 'Tag', 'dataline');

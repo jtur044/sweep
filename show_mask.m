@@ -23,9 +23,13 @@ function g = show_mask(dataTable, profile, xp, yp)
     end
          
     %% plot information     
-    g1 = show_timeline (t, x1, yp, 0.2, 'b', 'FaceAlpha', 0.1); hold on;
-    g2 = show_timeline (t, x2, yp, 0.2, 'g', 'FaceAlpha', 0.1);        
-    g  = [ g1(1) g2(1) ];
+
+    g2 = show_timeline (t, t>min(t), yp, 20, [144, 238, 144]/255, 'FaceAlpha', 1.0);      
+    g1 = show_timeline (t, ~x1 | x2, yp, 20, [255, 191, 0]/255, 'FaceAlpha', 0.8); hold on;
+
+    % prob = ~x1 | x2;
+    % g2 = show_timeline (t, x2, yp, 0.2, [255, 191, 0]/255, 'FaceAlpha', 1.0);        
+    g  = [ g1(1) g2(1)  ];
     
 return
 

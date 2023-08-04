@@ -1,6 +1,6 @@
-function run_webcam_sweep_processor (main_dir, which_dir, which_profile, varargin)
+function batch_webcam_processor (main_dir, which_profile, varargin)
 
-% RUN_WEBCAM_SWEEP_PROCESSOR Batch analysis of webcam FILES 
+% BATCH_WEBCAM_PROCESSOR Batch analysis of webcam FILES 
 %
 %   batch_webcam_processor (main_dir, which_fn, varargin)
 %
@@ -23,53 +23,99 @@ result = p.Results;
 
 
 %% read the setup configuration file 
-fprintf ('loading setup ... ');
 setups = load_commented_json (fullerfile(main_dir, 'config/setup.config'));   
 profile = getprofile (setups, which_profile);   
 if (isempty(profile))
   error (sprintf('Invalid profile requested ... %s', which_profile));
 end
-fprintf ('OK\n');
 
 
 %% participant level information 
-%fprintf ('loading protocol ... ');
+d.main_dir     = main_dir;
+%d.protocolfile  = fullerfile (main_dir, 'protocol.simpler.csv');
 %try 
-%    log = load_commented_json (d.protocolfile);   
+%    log = readtable (d.protocolfile);   
 %catch ME 
 %     error ('WARNING : no protocol file found ... %s\n', d.protocolfile);
 %end 
-%fprintf ('OK\n');
 
 
-d.main_dir     = main_dir;
-d.eyetracker_branch = 'config/eyetracker.config';
+%% read the manifest FILE 
+importfiles = {}; count = 1;
+manifestfile = fullerfile (main_dir, result.manifest);
+totalfiles = importdata(manifestfile); % log.filename;
+for k = 1:length (totalfiles)
+    eachfile = totalfiles{k};
+    if (strcmp(eachfile(1),'#'))
+       continue;
+    end       
 
-%% loading files 
-importfiles = fullerfile(main_dir, which_dir);
+    importfiles {count} = eachfile;
+    count = count + 1;    
+end
+
+fprintf ('Total files read ... %d\n', length(importfiles));
+
+
+%% read the ignore FILE 
+%{
+ignore_count   = 1;
+ignore_strings = {};
+ignore_flag  = false;
+ignorefile = fullerfile (main_dir, 'ignore.txt');
+if (exist(ignorefile, 'file'))
+    temp = importdata (ignorefile);
+    for k = 1:length (temp)        
+       eachfile = temp{k};
+       if (strcmp(eachfile(1),'#'))
+            continue;
+       end       
+       ignore_strings{ignore_count} = temp{k};
+       ignore_count = ignore_count + 1;
+    end    
+        
+    i = contains (importfiles, ignore_strings);
+    fprintf ('Total ignore files ... %d\n', sum(i));    
+    importfiles = importfiles(~i);
+end
+%}
+
+
+fprintf ('Total processing files ... %d\n', length(importfiles));
+
+
+%% for each importfile perform the following   
+%
+%   ignored files have been removed 
+%
+
+
+% clear textprogressbar;
+% textprogressbar ('analysis    ');
+
 M = length (importfiles);
 for k = 1:M
     
-       
-   eachpath = importfiles{k};   
     
-   fprintf ('processing ... %s\n', eachpath);
-
-
+   %textprogressbar (floor(k/M*100));
+   
+   eachfile = importfiles{k};   
+       
+   %% ignore '#' files in manifest.txt 
+   % if (strcmp(eachfile(1),'#'))
+   %     continue;
+   % end
+      
    %% Setup paths for individual files   
-   %[each_path, each_name, ~] = fileparts (eachfile);         
-   d.runpath      = eachpath;
-   d.videofile    = fullerfile(eachpath, 'video.mp4');    
-   
-   % d.clipspath     = fullerfile(eachpath, 'clips');   
-   
-   d.openfacepath  = fullerfile (eachpath, 'result',   'openface');  
-   d.openfacefile  = fullerfile (d.openfacepath, 'video.csv');  
-   
-   d.resultpath    = fullerfile (d.runpath, 'result',  'result');  
-   d.oknpath       = fullerfile (d.runpath,  'result', 'okn');     
-   %d.flowpath      = fullerfile (d.runpath,  'result', 'flow');        
-   %d.participantpath  = fullerfile (main_dir, each_path);   
+   [each_path, each_name, ~] = fileparts (eachfile);         
+   d.runpath      = fullerfile (main_dir, each_path, each_name);
+   d.videofile    = fullerfile (main_dir, eachfile);    
+   d.clipspath    = fullerfile(d.main_dir, each_path);   
+   d.openfacepath  = fullerfile (d.runpath,   'openface');   
+   d.resultpath    = fullerfile (d.runpath,   'result');  
+   d.oknpath       = fullerfile (d.runpath,   'okn');     
+   d.flowpath      = fullerfile (d.runpath,   'flow');        
+   d.participantpath  = fullerfile (main_dir, each_path);   
   
    
    %% Make these directories if they don't exist    
@@ -77,9 +123,9 @@ for k = 1:M
    createdirectory (d.runpath);   
    createdirectory (d.openfacepath);
    createdirectory (d.resultpath);
-   %createdirectory (d.participantpath);   
+   createdirectory (d.participantpath);   
    createdirectory (d.oknpath);   
-   %createdirectory (d.flowpath);
+   createdirectory (d.flowpath);
    
    
    %% To CORRECTLY run UPDATER 
@@ -89,52 +135,63 @@ for k = 1:M
    %       outputfile is the updated data file (results.updated.csv)
    %
 
-       
-   %% each presentation - openface
-   if (profile.openface)
-       
-       % uses :
-       %
-       %    d.videofile 
-       %    d.openfacepath (creates: video.csv)
+      
+   %% Analyze EACH INDIVIDUAL CLIP     
+   %L = size (log, 1);   
+   %for l = 1:L
+   
+   
+      %% Load the appropriate trial parameters  
+      % i = contains (log.filename, each_name);       
+      % if (any(i))
+      %    each_presentation = log(i,:);                      
+      %    if (size(each_presentation,1) ~= 1 )
+      %       error ('Inconsistent!');                
+      %    end                    
+      %    each_presentation.filename = each_presentation.filename{1};          
+      % else
+      %    continue; 
+      % end
               
-       presentation_openface (d, result, setups);
-   end
+      % d.item = each_presentation.Number;
+
+       each_presentation.filename = eachfile;
        
-   %% each presentation / video
-   if (profile.eyetracker)
        
-       % uses :
-       %
-       % d.videofile
-       % d.openfacefile
-       % d.resultpath
-              
-       presentation_eyetracker (d, result, setups);
-   end
+       %% each presentation - openface
+       if (profile.openface)
+        presentation_openface (each_presentation, d, result, setups);
+       end
+       
+       %% each presentation / video
+       if (profile.eyetracker)
+        presentation_eyetracker (each_presentation, d, result);
+       end
                  
-   %% create a FlowAlyzer on the entire "RIGHT" video    
-   if (profile.flowalyzer)
-      presentation_flowalyzer (each_presentation, d, result);
-   end
+       %% create a FlowAlyzer on the entire "RIGHT" video    
+       if (profile.flowalyzer)
+           presentation_flowalyzer (each_presentation, d, result);
+       end
        
-   %% each presentation / updater
-   if (profile.updater)
-      presentation_updater (each_presentation, d, result);
-   end
+       %% each presentation / updater
+       if (profile.updater)
+        presentation_updater (each_presentation, d, result);
+       end
        
-   %% each presentation / okndetecor
-   if (profile.okndetector)
-       presentation_okn (each_presentation, d, result, setups, 'frontface');
-    end
+       %% each presentation / okndetecor
+       if (profile.okndetector)
+        presentation_okn (each_presentation, d, result, setups, 'frontface');
+       end
+
        
-    %% check if a testrun      
-    if (result.testrun)   
-        fprintf ('Called a TESTRUN.\n');       
-        return
-    end
+       %% check if a testrun      
+       if (result.testrun)   
+            fprintf ('Called a TESTRUN.\n');       
+            return
+       end
        
    %end
+   
     
     
 end
@@ -151,9 +208,29 @@ end
 %% PRESENTATION OPENFACE
 
 
-function presentation_openface (d, result, setups)
+function presentation_openface (eachItem, d, result, setups)
 
+       
 
+       %% analyze each        
+       [~,eachbasename,~] = fileparts (eachItem.filename);
+       
+       
+       if (iscell(eachItem.filename))
+           cfilename = eachItem.filename{1};
+       else
+           cfilename = eachItem.filename;           
+       end              
+       inputvideo         = fullerfile (d.clipspath, cfilename);
+       outputpath        = d.openfacepath; 
+
+       %% Clips
+       if (isempty(dir(d.clipspath)))
+          fprintf ('WARNING : no CLIPS for  %s\n', inputvideo);            
+          return
+       end
+
+       
        %, eachbasename, strcat(eachbasename, '.csv'));
        %configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
        %outputpath   = fullerfile (d.resultpath, eachbasename); %%, 'results.csv');
@@ -171,18 +248,15 @@ function presentation_openface (d, result, setups)
              
              %% Absolute or relative 
              
-             % if (startsWith(inputvideo,'.'))             
-             %   inputvideo = fullerfile(oldcd, inputvideo);
-             %   outputpath = fullerfile(oldcd, outputpath);   
-             % elseif (startsWith(inputvideo,'/'))
-             %   inputvideo = fullerfile(inputvideo);
-             %   outputpath = fullerfile(outputpath);   
-             % else
-             %   error ('Needs to SPECIFIED as relative or absolute');
-             % end
-                          
-             inputvideo = d.videofile;
-             outputpath = d.openfacepath;
+             if (startsWith(inputvideo,'.'))             
+                inputvideo = fullerfile(oldcd, inputvideo);
+                outputpath = fullerfile(oldcd, outputpath);   
+             elseif (startsWith(inputvideo,'/'))
+                inputvideo = fullerfile(inputvideo);
+                outputpath = fullerfile(outputpath);   
+             else
+                error ('Needs to SPECIFIED as relative or absolute');
+             end
              
              cmd_str = sprintf('./example.sh "%s" "%s"', inputvideo, outputpath); 
              
@@ -223,7 +297,7 @@ function presentation_openface (d, result, setups)
        %system(cmd_str);                    
        %fprintf ('%d.  \tconfig = %s\n', d.item, configfile);
        %fprintf ('%d.\tinput    = %s\n', d.item, inputvideo);
-       %fprintf ('\topenface = %s\n', outputpath);
+       fprintf ('\topenface = %s\n', outputpath);
 
 end
 
@@ -231,18 +305,15 @@ end
 %% PRESENTATION EYETRACKER 
 
 
-function presentation_eyetracker (videofile, configpath, openfacepath, outputvideo, d, result)
+function presentation_eyetracker (eachItem, d, result)
 
        %% analyze each 
        
        [~,eachbasename,~] = fileparts (eachItem.filename);
-       
-       
-       videofile = d.videofile;
-       
-       %videofile    = fullerfile (d.clipspath, eachItem.filename);
-       openfacefile = fullerfile (d.openfacepath, 'video.csv'));
-       %configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
+              
+       videofile    = fullerfile (d.clipspath, eachItem.filename);
+       openfacefile = fullerfile (d.openfacepath, eachbasename, strcat(eachbasename, '.csv'));
+       configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
        outputpath   = fullerfile (d.resultpath, eachbasename); %%, 'results.csv');
        logfile      = fullerfile (outputpath, 'output.log');
        
@@ -262,7 +333,7 @@ function presentation_eyetracker (videofile, configpath, openfacepath, outputvid
             
             %% generate a log file
             rlog (logfile);                               
-            config = recursive_load (configpath, 'config/eyetracker.json');                        
+            config = load_hierarchy(d.clipspath, d.main_dir, 'eyetracker.json');                        
             run_of_tracker (config, videofile, openfacefile, outputpath); %, 'OverWrite', true);      
        else 
            %fprintf ('analyzing ... %s\n', videofile);

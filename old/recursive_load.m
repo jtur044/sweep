@@ -29,7 +29,9 @@ function final = recursive_load (filepath, filename, varargin)
    fprintf ('starting ... %s', eachfile);
       
    while (~isempty(filepath))
-          
+
+      fprintf ('testing ... %s', eachfile);
+
       if (exist (eachfile, 'file'))
           final = result.loader (eachfile);
           return          
