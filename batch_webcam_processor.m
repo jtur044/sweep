@@ -108,25 +108,30 @@ for k = 1:M
       
    %% Setup paths for individual files   
    [each_path, each_name, ~] = fileparts (eachfile);         
-   d.runpath      = fullerfile (main_dir, each_path, each_name);
-   d.videofile    = fullerfile (main_dir, eachfile);    
-   d.clipspath    = fullerfile(d.main_dir, each_path);   
-   d.openfacepath  = fullerfile (d.runpath,   'openface');   
-   d.resultpath    = fullerfile (d.runpath,   'result');  
-   d.oknpath       = fullerfile (d.runpath,   'okn');     
-   d.flowpath      = fullerfile (d.runpath,   'flow');        
-   d.participantpath  = fullerfile (main_dir, each_path);   
   
+   cliplesspath = fileparts (each_path);
+   
+   d.runpath       = fullerfile (main_dir, each_path, each_name);
+   d.participantpath  = fullerfile (main_dir, cliplesspath);   
+   d.resultpath       = fullerfile (d.participantpath, 'result');  
+   d.videofile     = fullerfile (main_dir, eachfile);   
+   d.clipspath     = fullerfile(d.main_dir, each_path);   
+   d.openfacepath   = fullerfile (d.resultpath, 'openface');   
+   d.eyetrackpath   = fullerfile (d.resultpath, 'eyetrack');  
+   d.oknpath        = fullerfile (d.resultpath, 'okn');     
+   d.flowpath       = fullerfile (d.resultpath, 'flow');        
+     
    
    %% Make these directories if they don't exist    
    createdirectory (d.main_dir);
    createdirectory (d.runpath);   
    createdirectory (d.openfacepath);
-   createdirectory (d.resultpath);
+   createdirectory (d.eyetrackpath);
    createdirectory (d.participantpath);   
    createdirectory (d.oknpath);   
    createdirectory (d.flowpath);
-   
+   createdirectory (d.resultpath);
+      
    
    %% To CORRECTLY run UPDATER 
    %   
@@ -221,19 +226,18 @@ function presentation_openface (eachItem, d, result, setups)
        else
            cfilename = eachItem.filename;           
        end              
-       inputvideo         = fullerfile (d.clipspath, cfilename);
+       inputvideo         = d.videofile; % fullerfile (d.clipspath, cfilename);
        outputpath        = d.openfacepath; 
 
-       %% Clips
-       if (isempty(dir(d.clipspath)))
-          fprintf ('WARNING : no CLIPS for  %s\n', inputvideo);            
-          return
-       end
-
+       %% clips
+       % if (isempty(dir(d.clipspath)))
+       %   fprintf ('WARNING : no CLIPS for  %s\n', inputvideo);            
+       %   return
+       % end
        
-       %, eachbasename, strcat(eachbasename, '.csv'));
-       %configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
-       %outputpath   = fullerfile (d.resultpath, eachbasename); %%, 'results.csv');
+       % eachbasename, strcat(eachbasename, '.csv'));
+       % configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
+       % outputpath   = fullerfile (d.resultpath, eachbasename); %%, 'results.csv');
        
        %% run openface
        
@@ -311,10 +315,10 @@ function presentation_eyetracker (eachItem, d, result)
        
        [~,eachbasename,~] = fileparts (eachItem.filename);
               
-       videofile    = fullerfile (d.clipspath, eachItem.filename);
+       videofile    = d.videofile; %ullerfile (d.clipspath, eachItem.filename);
        openfacefile = fullerfile (d.openfacepath, eachbasename, strcat(eachbasename, '.csv'));
-       configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
-       outputpath   = fullerfile (d.resultpath, eachbasename); %%, 'results.csv');
+       %configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
+       outputpath   = fullerfile (d.eyetrackpath, eachbasename); %%, 'results.csv');
        logfile      = fullerfile (outputpath, 'output.log');
        
        if (~exist(openfacefile, 'file'))
@@ -333,10 +337,10 @@ function presentation_eyetracker (eachItem, d, result)
             
             %% generate a log file
             rlog (logfile);                               
-            config = load_hierarchy(d.clipspath, d.main_dir, 'eyetracker.json');                        
+            config = load_hierarchy(d.clipspath, d.main_dir, 'config/eyetracker.webcam-brooks.json');                        
             run_of_tracker (config, videofile, openfacefile, outputpath); %, 'OverWrite', true);      
        else 
-           %fprintf ('analyzing ... %s\n', videofile);
+           fprintf ('dry-run ... %s\n', videofile);
        end
        
 end

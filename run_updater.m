@@ -31,11 +31,11 @@ res = p.Results;
 
 %% load configuration file 
 
-if (ischar(config))
+if (ischar(config)| isstring(config))
     config  = load_commented_json (config); %% default 
 end
 
-if (ischar(inputfile))
+if (ischar(inputfile) | isstring(inputfile))
    dataTbl  = readtable (inputfile); 
 end
 

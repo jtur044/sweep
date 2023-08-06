@@ -15,26 +15,42 @@ function r = run_experiment_sweep_set (input_dir, info)
 r = analyze_sweep_set (input_dir, info);
 
 %% do the gridding 
+
 r = get_regridded_activity (r, "descending");
 r = get_regridded_activity (r, "ascending");
 
-p.descending.activity = get_metrics (r, "descending");
-p.ascending.activity  = get_metrics (r, "ascending");
+%% get the "OR'ed" metric 
+
+p.descending.activity = get_metrics (r, "descending", "or");
+p.ascending.activity  = get_metrics (r, "ascending",  "or");
+
+
 
 end
 
 
-function b = get_metrics (r, which)
+function b = get_metrics (r, which, methods)
 
-    M = length (r);   
-    t = r(1).(which).activity(:,1);
 
-    b = r(1).(which).activity(:,3);
-    for k = 1:M
-        y1 = r(k).(which).activity(:,3);
-        b = b | y1;
-    end    
-    b = [ t b ];
+    switch (methods)
+
+        case { "or" }
+        
+            M = length (r);   
+            t = r(1).(which).activity(:,1);
+        
+            b = r(1).(which).activity(:,3);
+            for k = 1:M
+                y1 = r(k).(which).activity(:,3);
+                b = b | y1;
+            end    
+            b = [ t b ];
+
+        otherwise 
+            error ('Information.');
+
+    end
+
 end
 
 

@@ -1,8 +1,8 @@
-function batch_webcam_processor (main_dir, which_profile, varargin)
+function batch_sweep_webcam_processor (main_dir, which_profile, varargin)
 
-% BATCH_WEBCAM_PROCESSOR Batch analysis of webcam FILES 
+% BATCH_SWEEP_WEBCAM_PROCESSOR Batch analysis of webcam FILES 
 %
-%   batch_webcam_processor (main_dir, which_fn, varargin)
+%   batch_sweep_webcam_processor (main_dir, which_fn, varargin)
 %
 % where 
 %
@@ -32,22 +32,34 @@ end
 
 %% participant level information 
 d.main_dir     = main_dir;
-%d.protocolfile  = fullerfile (main_dir, 'protocol.simpler.csv');
-%try 
+
+% d.protocolfile  = fullerfile (main_dir, 'protocol.simpler.csv');
+% try 
 %    log = readtable (d.protocolfile);   
-%catch ME 
+% catch ME 
 %     error ('WARNING : no protocol file found ... %s\n', d.protocolfile);
-%end 
+% end 
 
 
 %% read the manifest FILE 
+importfiles = {}; count = 1;
 manifestfile = fullerfile (main_dir, result.manifest);
-importfiles = mlog.filename;
+totalfiles = importdata(manifestfile); % log.filename;
+for k = 1:length (totalfiles)
+    eachfile = totalfiles{k};
+    if (strcmp(eachfile(1),'#'))
+       continue;
+    end       
+
+    importfiles {count} = eachfile;
+    count = count + 1;    
+end
 
 fprintf ('Total files read ... %d\n', length(importfiles));
 
 
 %% read the ignore FILE 
+%{
 ignore_count   = 1;
 ignore_strings = {};
 ignore_flag  = false;
@@ -67,6 +79,8 @@ if (exist(ignorefile, 'file'))
     fprintf ('Total ignore files ... %d\n', sum(i));    
     importfiles = importfiles(~i);
 end
+%}
+
 
 fprintf ('Total processing files ... %d\n', length(importfiles));
 
@@ -85,27 +99,28 @@ for k = 1:M
     
     
    %textprogressbar (floor(k/M*100));
-
-   
    
    eachfile = importfiles{k};   
        
    %% ignore '#' files in manifest.txt 
-   %if (strcmp(eachfile(1),'#'))
+   % if (strcmp(eachfile(1),'#'))
    %     continue;
-   %end
-   
-
+   % end
+      
    %% Setup paths for individual files   
    [each_path, each_name, ~] = fileparts (eachfile);         
-   d.runpath      = fullerfile (main_dir, each_path, each_name);
-   d.videofile    = fullerfile (main_dir, eachfile);    
-   d.clipspath    = fullerfile(d.main_dir, each_path);   
-   d.openfacepath  = fullerfile (d.runpath,   'openface');   
-   d.resultpath    = fullerfile (d.runpath,   'result');  
-   d.oknpath       = fullerfile (d.runpath,   'okn');     
-   d.flowpath      = fullerfile (d.runpath,   'flow');        
-   d.participantpath  = fullerfile (main_dir, each_path);   
+  
+   cliplesspath = fileparts (each_path);
+   
+   d.runpath          = fullerfile (main_dir, each_path, each_name);
+   d.participantpath  = fullerfile (main_dir, cliplesspath);   
+   d.resultpath       = fullerfile (d.participantpath, 'result');  
+   d.videofile        = fullerfile (main_dir, eachfile);   
+   d.clipspath        = fullerfile(d.main_dir, each_path);   
+   d.openfacepath     = fullerfile (d.resultpath, 'openface', each_name);   
+   d.eyetrackpath     = fullerfile (d.resultpath, 'eyetrack', each_name);  
+   d.oknpath          = fullerfile (d.resultpath, 'okn');        
+   d.flowpath         = fullerfile (d.resultpath, 'flow');      
   
    
    %% Make these directories if they don't exist    
@@ -131,21 +146,22 @@ for k = 1:M
    %for l = 1:L
    
    
-       %% Load the appropriate trial parameters  
-       i = contains (log.filename, each_name);       
-       if (any(i))
-          each_presentation = log(i,:);                      
-          if (size(each_presentation,1) ~= 1 )
-             error ('Inconsistent!');                
-          end                    
-          each_presentation.filename = each_presentation.filename{1};          
-       else
-          continue; 
-       end
-       
-       
-       d.item = each_presentation.Number;
+      %% Load the appropriate trial parameters  
+      % i = contains (log.filename, each_name);       
+      % if (any(i))
+      %    each_presentation = log(i,:);                      
+      %    if (size(each_presentation,1) ~= 1 )
+      %       error ('Inconsistent!');                
+      %    end                    
+      %    each_presentation.filename = each_presentation.filename{1};          
+      % else
+      %    continue; 
+      % end
+              
+      % d.item = each_presentation.Number;
 
+       each_presentation.filename = eachfile;
+       
        
        %% each presentation - openface
        if (profile.openface)
@@ -175,8 +191,8 @@ for k = 1:M
        
        %% check if a testrun      
        if (result.testrun)   
-            fprintf ('Called a TESTRUN.\n');       
-            return
+          fprintf ('Called a TESTRUN.\n');       
+          return
        end
        
    %end
@@ -210,7 +226,7 @@ function presentation_openface (eachItem, d, result, setups)
        else
            cfilename = eachItem.filename;           
        end              
-       inputvideo         = fullerfile (d.clipspath, cfilename);
+       inputvideo        = fullerfile (d.clipspath, cfilename);
        outputpath        = d.openfacepath; 
 
        %% Clips
@@ -285,7 +301,7 @@ function presentation_openface (eachItem, d, result, setups)
        %fprintf(cmd_str);      
        %system(cmd_str);                    
        %fprintf ('%d.  \tconfig = %s\n', d.item, configfile);
-       fprintf ('%d.\tinput    = %s\n', d.item, inputvideo);
+       %fprintf ('%d.\tinput    = %s\n', d.item, inputvideo);
        fprintf ('\topenface = %s\n', outputpath);
 
 end
@@ -300,10 +316,10 @@ function presentation_eyetracker (eachItem, d, result)
        
        [~,eachbasename,~] = fileparts (eachItem.filename);
               
-       videofile    = fullerfile (d.clipspath, eachItem.filename);
-       openfacefile = fullerfile (d.openfacepath, eachbasename, strcat(eachbasename, '.csv'));
-       configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
-       outputpath   = fullerfile (d.resultpath, eachbasename); %%, 'results.csv');
+       videofile    = d.videofile; %ullerfile (d.clipspath, eachItem.filename);
+       openfacefile = fullerfile (d.openfacepath, strcat(eachbasename, '.csv'));
+       % configfile   = fullerfile (d.main_dir, 'eyetracker.json');       
+       outputpath   = d.eyetrackpath; %%, 'results.csv');
        logfile      = fullerfile (outputpath, 'output.log');
        
        if (~exist(openfacefile, 'file'))
@@ -322,15 +338,13 @@ function presentation_eyetracker (eachItem, d, result)
             
             %% generate a log file
             rlog (logfile);                               
-            config = load_hierarchy(d.clipspath, d.main_dir, 'eyetracker.json');                        
+            config = load_hierarchy(d.clipspath, d.main_dir, 'config/eyetracker.webcam-brooks.json');                        
             run_of_tracker (config, videofile, openfacefile, outputpath); %, 'OverWrite', true);      
        else 
-           %fprintf ('analyzing ... %s\n', videofile);
+           fprintf ('dry-run ... %s\n', videofile);
        end
        
 end
-
-
 
 
 %% PRESENTATION UPDATER 
@@ -340,22 +354,24 @@ function presentation_updater (eachItem, d, result)
 
        %% analyze each 
        [eachdir, eachbasename, ~] = fileparts(fullerfile (d.resultpath, eachItem.filename));       
-       inputfile  = fullerfile (eachdir, eachbasename, 'results.patched.csv');
-       outputfile = fullerfile (eachdir, eachbasename, 'results.updated.csv');
-       configfile = fullerfile (d.main_dir, 'eyetracker.json');
+       inputfile  = fullerfile (d.eyetrackpath, 'results.csv');
+       outputfile = fullerfile (d.eyetrackpath, 'results.updated.csv');
        
+
        [~, progresstitle,~] = fileparts(fileparts(fileparts(eachdir)));
               
        %% EXECUTE       
        if (~result.dryrun)
-            run_updater (configfile, inputfile, outputfile, 'ProgressTitle', sprintf('%s (%s)\t',progresstitle, eachbasename));       
+            config = load_hierarchy(d.clipspath, d.main_dir, 'config/eyetracker.webcam-brooks.json');                        
+           
+            run_updater (config, inputfile, outputfile, 'ProgressTitle', sprintf('%s (%s)\t',progresstitle, eachbasename));       
        end
               
        %fprintf ('%d.\tconfig = %s\n', d.item, configfile);
        %fprintf ('\tinput  = %s\n', inputfile);
        %fprintf ('\toutput = %s\n', outputfile);
 
-       rlog ('rlog','updater','%d.\tconfig = %s\n', d.item, configfile);
+       %rlog ('rlog','updater','%d.\tconfig = %s\n', d.item, configfile);
        rlog ('rlog','updater','\tinput  = %s\n', inputfile);
        rlog ('rlog','updater','\toutput = %s\n', outputfile);
 

@@ -1,4 +1,4 @@
-function [data, events] = show_webcam_sweep_data  (filename, tracker_name, varargin) % configfile, dataTbl, tracker_name, varargin)
+function [data, events] = show_webcam_sweep_data  (filename, which_sweep, tracker_name,  varargin) % configfile, dataTbl, tracker_name, varargin)
 
 % SHOW_WEBCAM_SWEEP_DATA Show data from eyetracker/results.csvtracker result matrix
 %
@@ -41,7 +41,7 @@ config = recursive_load (branchdir, res.setupfile);
 
 %% read DataTable 
 try
-    if (ischar(filename))
+    if (isstring(filename) | ischar(filename))
         dataTbl = readtable (filename);
     end
 catch ME 
@@ -61,15 +61,13 @@ subTable = dataTbl(dataTbl.TrackerId == tracker.TrackerId, :);
 %yyaxis left;
 h = show_graph (subTable, input, res.X, res.Y);
 
-
-
 %% Show a timeline 
 
 timeline = recursive_load (branchdir, 'timeline.json');
 if (~isempty(timeline))
-    k0 = show_events (timeline);
+%    k0 = show_events (timeline);
+     show_logmar_ticks (timeline, which_sweep);
 end
-
 
 
 startTime = min(subTable.currentTime);
@@ -90,7 +88,7 @@ if (res.displayMask)
     % ylim([-1, 1]);
     % y
 
-legend([ h(1) g(2) g(1) k0(1) ],'Signal','Tracking','Lost','Rest');
+legend([ h(1) g(2) g(1) ],'Signal','Tracking','Lost'); % ,'Rest');
 
 set(gca,'FontSize',20);
 ylim([-150 150]);
@@ -111,7 +109,7 @@ function ev = show_events (timeline)
 
         each_timeline_item = timeline{k};
 
-        %% START/END ITEMS 
+        %% THIS IS AN ANIMATION  
         if (isfield(each_timeline_item, 'start') && (strcmpi(each_timeline_item.start.event.trial_type, "animation")))
 
             start_time = each_timeline_item.start.timestamp.pts_time;
@@ -158,33 +156,90 @@ xlabel ('logMAR');
 
 end
 
+function show_logmar_ticks (timeline, which)
+
+
+%% add down-sweep information  
+[sweep_event, sub_events] = find_sweep (timeline, which, 1);        
+
+switch (which)
+
+    case { "right_down" }
+        [xdata, xlabels] = get_down_sweep_ticks (sweep_event, sub_events);
+
+    case { "right_up" }
+        [xdata, xlabels] = get_up_sweep_ticks (sweep_event, sub_events);
+
+    otherwise
+        error ('Unknown');
+
+end
+
+xtick_data   = xdata;
+xtick_labels = xlabels; 
+
+%%% add up-sweep information 
+%[sweep_event, sub_events] = find_sweep (timeline, "right_up", 1);
+%[xdata, xlabels] = get_up_sweep_ticks (sweep_event, sub_events);
+
+%xtick_data   = [ xtick_data xdata ];
+%xtick_labels = [ xtick_labels xlabels ]; 
+   
+%disp ('timeline');
+xticks (xtick_data);
+xticklabels (xtick_labels);
+xlabel ('logMAR');
+
+
+
+end
+
 
 function [xdata, xlabels] = get_down_sweep_ticks (sweep_event, sub_events)
-    
-    for k = 1:length (sub_events)
-        xdata(k)   = sub_events(k).event.timestamp.pts_time;
 
+    count = 1;
+
+    start_timestamp = sweep_event.start.timestamp.pts_time;
+
+    for k = 1:length (sub_events)
+
+        if (strcmpi(sub_events(k).event.event.type, 'key_marker'))
+            continue;
+        end
+
+        xdata(count)   = sub_events(k).event.timestamp.pts_time - start_timestamp;
         this_logmar = str2num(sub_events(k).event.event.logmar_level);
-        xlabels{k} = this_logmar + 0.1;    
+        xlabels{count} = this_logmar + 0.1;    
+        count = count + 1;
     end
     
     %% additional one for end
-    xdata(k+1)   = sweep_event.end.timestamp.pts_time;
-    xlabels{k+1} = this_logmar;
+    xdata(count)   = sweep_event.end.timestamp.pts_time;
+    xlabels{count} = this_logmar;
 
 end
 
 function [xdata, xlabels] = get_up_sweep_ticks (sweep_event, sub_events)
 
+    count = 1;
+
+    start_timestamp = sweep_event.start.timestamp.pts_time;
+
     for k = 1:length (sub_events)
-        xdata(k)   = sub_events(k).event.timestamp.pts_time;
+
+        if (strcmpi(sub_events(k).event.event.type, 'key_marker'))
+            continue;
+        end
+
+        xdata(count)   = sub_events(k).event.timestamp.pts_time - start_timestamp;
         this_logmar = str2num(sub_events(k).event.event.logmar_level);
-        xlabels{k} = this_logmar;    
+        xlabels{count} = this_logmar;    
+        count = count + 1;
     end
 
     %% additional one for end
-    xdata(k+1) = sweep_event.end.timestamp.pts_time;
-    xlabels{k+1} = this_logmar + 0.1;
+    xdata(count) = sweep_event.end.timestamp.pts_time;
+    xlabels{count} = this_logmar + 0.1;
 
 end
 
@@ -255,4 +310,8 @@ function [each_timeline_item, events] = find_sweep (timeline, which_sweep, sweep
             end
         end
     end
+
+
+    error (sprintf('Didnt find %s %s', which_sweep, sweep_number));
+
 end
