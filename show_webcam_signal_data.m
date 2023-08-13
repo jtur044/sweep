@@ -1,8 +1,8 @@
-function [data, events] = show_webcam_sweep_data  (filename, which_sweep,tracker_name,  varargin) % configfile, dataTbl, tracker_name, varargin)
+function [data, events] = show_webcam_signal_data  (filename, which_sweep,  varargin) % configfile, dataTbl, tracker_name, varargin)
 
-% SHOW_WEBCAM_SWEEP_DATA Show data from eyetracker/results.csvtracker result matrix
+% SHOW_WEBCAM_SIGNAL_DATA Show data from eyetracker/results.csvtracker result matrix
 %
-%   show_webcam_sweep_data  (filename, tracker_name, varargin)
+%   show_webcam_signal_data  (filename, tracker_name, varargin)
 %
 % where 
 %       configfile   is the configuration file  
@@ -29,7 +29,9 @@ function [data, events] = show_webcam_sweep_data  (filename, which_sweep,tracker
 p = inputParser ();
 p.addOptional ('setupfile', 'config/eyetracker.webcam-brooks.json');
 p.addOptional ('displayMask', true);
-p.addOptional ('UseProfile', 'updated_by_nosetip');
+p.addOptional ('UseProfile', 'signal_displacement');
+p.addOptional ('showActivity', false);
+p.addOptional ('showTimePoint', []);
 p.addOptional ('X', 0);
 p.addOptional ('Y', 0);
 p.parse(varargin{:});
@@ -51,13 +53,27 @@ end
 
 %% get the appropriate profile / tracker 
 input   = findfield (config.Graph.Profiles, 'name', res.UseProfile);
-tracker = findfield (config.Trackers, 'name', tracker_name);
-subTable = dataTbl(dataTbl.TrackerId == tracker.TrackerId, :);
+%tracker = findfield (config.Trackers, 'name', tracker_name);
+%subTable = dataTbl(dataTbl.TrackerId == tracker.TrackerId, :);
 
 
 %% show graphs    
-%yyaxis left;
-h = show_graph (subTable, input, res.X, res.Y);
+
+h = show_signal (dataTbl, input, "showTimePoint", res.showTimePoint); % , input, res.X, res.Y);
+
+
+%% if activity information is available then show that 
+if (ismember("activity", dataTbl.Properties.VariableNames) & (res.showActivity))
+   yyaxis right;
+   plot (dataTbl.t, dataTbl.activity, ':');
+   ylim([-0.1 1.1])
+   %ylabel ('Activity');
+end
+
+
+
+
+%(dataTable, profile,
 
 %% Show a timeline 
 
@@ -68,8 +84,8 @@ if (~isempty(timeline))
 end
 
 
-startTime = min(subTable.currentTime);
-endTime   = max(subTable.currentTime);
+startTime = min(dataTbl.(input.t));
+endTime   = max(dataTbl.(input.t));
 
 xlim ([ startTime endTime ]);
 
@@ -79,20 +95,20 @@ xlim ([ startTime endTime ]);
      
 grid on;
 
-if (res.displayMask)
+%if (res.displayMask)
     %yyaxis right;
-    g = show_mask (subTable, input, res.X, -140);
+    %g = show_mask (dataTbl, input, res.X, -140);
     
     % ylim([-1, 1]);
     % y
 
-legend([ h(1) g(2) g(1) ],'Signal','Tracking','Lost'); % ,'Rest');
+%legend([ h(1) g(2) g(1) ],'Signal','Tracking','Lost'); % ,'Rest');
 
-set(gca,'FontSize',20);
-ylim([-150 150]);
+%set(gca,'FontSize',20);
+%ylim([-150 150]);
 
 %yaxis left;
-end
+%end
 
 end
 
@@ -212,7 +228,7 @@ function [xdata, xlabels] = get_down_sweep_ticks (sweep_event, sub_events)
     end
     
     %% additional one for end
-    xdata(count)   = sweep_event.end.timestamp.pts_time;
+    xdata(count)   = sweep_event.end.timestamp.pts_time - start_timestamp;
     xlabels{count} = this_logmar;
 
 end
@@ -236,7 +252,7 @@ function [xdata, xlabels] = get_up_sweep_ticks (sweep_event, sub_events)
     end
 
     %% additional one for end
-    xdata(count) = sweep_event.end.timestamp.pts_time;
+    xdata(count) = sweep_event.end.timestamp.pts_time - start_timestamp;
     xlabels{count} = this_logmar + 0.1;
 
 end
@@ -264,6 +280,7 @@ function events = find_events_in (timeline, start_time, end_time)
 
            each_timeline_item = timeline{k};
            if (isfield(each_timeline_item, 'event'))
+               
                event_time = each_timeline_item.event.timestamp.pts_time;               
                if ((start_time < event_time) && (event_time < end_time))
                     events(counter) = each_timeline_item;
@@ -312,4 +329,29 @@ function [each_timeline_item, events] = find_sweep (timeline, which_sweep, sweep
 
     error (sprintf('Didnt find %s %s', which_sweep, sweep_number));
 
+end
+
+
+
+
+%% GETPROFILE 
+
+function each_profile = getprofile (setups, which_profile)
+    each_profile = [];
+    profiles = setups.Graph.Profiles;
+    N = length (profiles);
+    for k=1:N
+
+        each_profile = profiles{k};
+
+        if (strcmpi(each_profile.name, which_profile))
+            return
+        end
+    end
+
+    error ('Profile not found', which_profile);
+
+    %if (isfield(profiles, which_profile))
+    %    y = profiles.(which_profile);        
+    %end    
 end

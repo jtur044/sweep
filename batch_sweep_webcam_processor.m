@@ -119,7 +119,8 @@ for k = 1:M
    d.clipspath        = fullerfile(d.main_dir, each_path);   
    d.openfacepath     = fullerfile (d.resultpath, 'openface', each_name);   
    d.eyetrackpath     = fullerfile (d.resultpath, 'eyetrack', each_name);  
-   d.oknpath          = fullerfile (d.resultpath, 'okn');        
+   d.oknpath          = fullerfile (d.resultpath, 'okn', each_name);        
+   d.figurespath          = fullerfile (d.resultpath, 'figures', each_name);        
    d.flowpath         = fullerfile (d.resultpath, 'flow');      
   
    
@@ -130,6 +131,7 @@ for k = 1:M
    createdirectory (d.resultpath);
    createdirectory (d.participantpath);   
    createdirectory (d.oknpath);   
+   createdirectory (d.figurespath);   
    createdirectory (d.flowpath);
    
    
@@ -186,8 +188,24 @@ for k = 1:M
        %% each presentation / okndetecor
        if (profile.okndetector)
         presentation_okn (each_presentation, d, result, setups, 'frontface');
+       
        end
 
+       %% each presentation / okndetecor
+       if (profile.signal_updater)
+         presentation_signal_updater (each_presentation, d, result, setups);       
+       end
+
+       %% each presentation / okndetecor
+       if (profile.sweep_analyzer)
+         presentation_sweep_analyzer (each_presentation, d, result, setups);       
+       end
+
+
+       %% each presentation / okndetecor
+       if (profile.sweep_visualizer)
+         presentation_sweep_visualizer (each_presentation, d, result, setups);       
+       end
        
        %% check if a testrun      
        if (result.testrun)   
@@ -646,13 +664,13 @@ function presentation_okn(eachItem, d, result, setup, source)
        
        %% Create a merged okndetector.config in the OUTPUT directory
 
-       [~,eachbasename,~] = fileparts (eachItem.filename);              
+       %[~,eachbasename,~] = fileparts (eachItem.filename);              
 
        %% oknpath            = fullfile (d.oknpath, source, eachbasename);
        
        %tempconfigfile     = fullfile (oknpath, 'okndetector.merged.config');         
-       oknpath            = fullerfile (d.oknpath);
-       createdirectory(oknpath);
+       %oknpath            = fullerfile (d.oknpath);
+       %createdirectory(oknpath);
               
        %% updated data file 
        
@@ -663,9 +681,12 @@ function presentation_okn(eachItem, d, result, setup, source)
                
                               
                %% this is the INPUT file 
-               [eachdir, eachbasename, ~] = fileparts(fullerfile (d.resultpath, eachItem.filename));       
-               inputdir   = fullerfile (eachdir, eachbasename);       
-               inputfile  = fullerfile (inputdir, 'results.updated.csv');       
+               %[eachdir, eachbasename, ~] = fileparts(fullerfile (d.resultpath, eachItem.filename));       
+               %inputdir   = fullerfile (eachdir, eachbasename);       
+               inputfile  = fullerfile (d.eyetrackpath, 'results.updated.csv');
+
+               % fullerfile (d.eyetrackpath
+
                if (~exist(inputfile, 'file'))
                     fprintf ('WARNING: No Input File  ...%s\n', inputfile);
                     return
@@ -679,7 +700,7 @@ function presentation_okn(eachItem, d, result, setup, source)
        end
                     
        %% Execute                           
-       if (~result.dryrun)
+       
                        
            
             %% generate a temporary OKN config File from the 'okndetector.config' FILES 
@@ -698,111 +719,299 @@ function presentation_okn(eachItem, d, result, setup, source)
             
                     
                     %% These are the configuration files 
-                    each_oknpath = fullerfile (d.oknpath, 'EC');
-                    oknconfig_obj = load_hierarchy (each_oknpath, d.main_dir, 'okndetector.frontface.EC.config'); 
-                    merged_configfile = fullerfile(each_oknpath, 'okndetector.config');
-                    savejson ([], oknconfig_obj, merged_configfile);
-                    run_okndetector (merged_configfile, inputfile, each_oknpath);                                                      
+                    % each_oknpath = fullerfile (d.oknpath, 'EC');
+                    % oknconfig_obj = load_hierarchy (each_oknpath, d.main_dir, 'okndetector.frontface.EC.config'); 
+                    % merged_configfile = fullerfile(each_oknpath, 'okndetector.config');
+                    % savejson ([], oknconfig_obj, merged_configfile);
+                    % run_okndetector (merged_configfile, inputfile, each_oknpath);                                                      
 
-                    each_oknpath = fullerfile (d.oknpath, 'NT');
-                    oknconfig_obj = load_hierarchy ( each_oknpath, d.main_dir, 'okndetector.frontface.NT.config');                    
-                    merged_configfile = fullerfile(each_oknpath, 'okndetector.config');
-                    savejson ([], oknconfig_obj, merged_configfile);
-                    run_okndetector (merged_configfile, inputfile, each_oknpath);                                                      
+                    if (~result.dryrun)
 
-                    
+                        each_oknpath = fullerfile (d.oknpath, 'NT');
+                        createdirectory(each_oknpath);
+
+                        oknconfig_obj = load_hierarchy ( each_oknpath, d.main_dir, 'config/okndetector.webcam-brooks.070823.config');                    
+                        merged_configfile = char(fullerfile(each_oknpath, 'okndetector.config'));
+                        savejson ([], oknconfig_obj, merged_configfile);
+                        run_okndetector (merged_configfile, inputfile, each_oknpath);                                                      
+
+                    end
             end
             
-       end
+       % end
 
 end
 
 
-%% PRESENTATION GAZE-SPLITTER 
 
 
-function presentation_gazesplitter (d, result, setups)
-      
-   %% enabled 
-   %if   (isfield(setups, 'adjust'))        
-   %    parms = setups.adjust;
-   %    if (~parms.Enable)       
-   %         fprintf ('Parameters not ENABLED.\n');
-   %         return
-   %    end
-   %end
-    
+%% PRESENTATION SWEEP ANALYZER 
+
+function presentation_sweep_analyzer (each_presentation, d, result, setups);
    
-   %% converted   
+   %% new 
 
-        %% input files 
-        %videofile         = d.videofile;         
-        %updatedfile       = d.updatedfile;        
-        %timefile          = d.timeline;         
-        % gazefile          = fullerfile(d.runpath,'../gaze.csv');      
-        
-        videopath = d.runpath; %,'../gaze.csv';      
-                
-        %% check if PC 
-        if (ispc())                       
+   data_dir = fullfile (d.oknpath, "NT",'OD.rightward');
+   info.OD.rightward = get_sweep_metrics (fullfile(data_dir,"signal.updated.csv"), fullfile(data_dir,"result.csv"));
+   
+   %% new 
 
-            %updatedfile    = strrep(updatedfile, '\','/');
-            %videofile      = strrep(videofile,  '\','/');        
-            %timefile       = strrep(timefile,   '\','/');  
-            videopath       = strrep(videopath, '\','/');  
+   data_dir  = fullfile (d.oknpath, "NT",'OD.leftward');
+   info.OD.leftward = get_sweep_metrics (fullfile(data_dir,"signal.updated.csv"), fullfile(data_dir,"result.csv"));
+
+   %% new 
+   
+   data_dir  = fullfile (d.oknpath, "NT",'OS.rightward');
+   info.OS.rightward  = get_sweep_metrics (fullfile(data_dir,"signal.updated.csv"), fullfile(data_dir,"result.csv"));
+
+   %% new 
+
+   data_dir  = fullfile (d.oknpath, "NT",'OS.leftward');
+   info.OS.leftward = get_sweep_metrics (fullfile(data_dir,"signal.updated.csv"), fullfile(data_dir,"result.csv"));
+   
+
+   %% Information 
+
+   [~,basename,~] = fileparts(d.oknpath);
+   protocol = easy_sweep_protocol (fullfile(d.participantpath, 'protocol.json'));
+   id = sscanf(basename, "clip-%d");
+   this_sweep = protocol.sweep (sprintf("trial-%d", id+1));
+
+   k = abs(this_sweep.info.ratio);
+
+   info.direction =  this_sweep.trial.which;
+
+   switch (this_sweep.trial.which)
+
+       case { "right_down", "left_down" } % dropoff point 
+
+            info.OD.rightward.VA = this_sweep.info.max_logMAR + 0.1 - k*info.OD.rightward.dropoff_t;
+            info.OD.rightward.t  = info.OD.rightward.dropoff_t;
             
-        end 
+            info.OD.leftward.VA  = this_sweep.info.max_logMAR + 0.1 - k*info.OD.leftward.dropoff_t;
+            info.OD.leftward.t   = info.OD.leftward.dropoff_t;
+            
+            info.OS.rightward.VA = this_sweep.info.max_logMAR + 0.1 - k*info.OS.rightward.dropoff_t;
+            info.OS.rightward.t =  info.OS.rightward.dropoff_t;
+            
+            info.OS.leftward.VA  = this_sweep.info.max_logMAR + 0.1 - k*info.OS.leftward.dropoff_t;
+            info.OS.leftward.t = info.OS.leftward.dropoff_t;
+            
 
-        %% video-splitter (no cdp_format field)
-        %fnames = fieldnames (parms.arguments);                
-        
+       case { "right_up", "left_up" }   % onset focused 
 
-        %% Produce the relevant GAZE information  
-        %
-        % load log.json 
-        %
-        % form the OUTPUT gaze: 
-        %   gaze-<id>-<index>-<trial_type>.csv 
-        %
-        % form the INPUT gaze: 
-        %  
-        %
-        
-        %% This will reconstruct events from the gazefile 
-        
-        [gazetable, final, events] = easy_loadgaze(videopath);      
+            info.OD.rightward.VA = this_sweep.info.min_logMAR + k*info.OD.rightward.onset_t;
+            info.OD.rightward.t  = info.OD.rightward.onset_t;
 
-        %% save full-gazetable
-        outfile = fullerfile (d.gazepath, 'gaze.converted.csv');
-        writetable (gazetable, outfile);                  
-        
-        %% output information 
-        M = length (final);
-        for k = 1:M 
-         
-             id        = str2num(final(k).end_event.trial_index)+1;
-             index_str = final(k).start_event.trial_index;
-             type_str  = final(k).start_event.trial_type;
-        
-             % form the OUTPUT gaze: 
-             %   gaze-<id>-<index>-<trial_type>.csv 
-             %
-                     
-             outputfile = sprintf('gaze-%d-%s-%s.csv', id, index_str, type_str); 
-             if (~result.dryrun)
-                
-                 i = (gazetable.event_id == id);
-                 thistable = gazetable(i,:);
-                 outfile = fullerfile (d.gazepath, outputfile);
-                 writetable (thistable, outfile);                  
-             end
-         end
+            info.OD.leftward.VA  = this_sweep.info.min_logMAR + k*info.OD.leftward.onset_t;
+            info.OD.leftward.t  = info.OD.leftward.onset_t;
+            
+            info.OS.rightward.VA = this_sweep.info.min_logMAR + k*info.OS.rightward.onset_t;
+            info.OS.rightward.t = info.OS.rightward.onset_t;
+            
+            info.OS.leftward.VA  = this_sweep.info.min_logMAR + k*info.OS.leftward.onset_t;
+            info.OS.leftward.t   = info.OS.leftward.onset_t;
+            
+       otherwise
+            error ("Unknown SWEEP.");
+   end   
+
+   
+   %% keypress (t, VA) (VA does not reference particular eye)
+
+   timelinefile = fullfile (d.participantpath, 'timeline.json');
+   timeline = load_commented_json (timelinefile);
+   [sweep_event, sub_events] = find_sweep (timeline, this_sweep.trial.which, 1); %% Hard-coded sweep number 
   
+   if (~isempty(sweep_event))
+
+        this_event = find_keypress_event (sub_events);
+        if  (~isempty(this_event))
+       
+            %% adjust for times
+            start_timestamp = sweep_event.start.timestamp.pts_time;
+            this_event.event.timestamp.pts_time = this_event.event.timestamp.pts_time - start_timestamp;
+
+            switch (this_sweep.trial.which)
+
+                case { "right_down", "left_down" } % dropoff point 
+
+                    %% keypress time and VA for down-sweep 
+                    info.keypress.t  = this_event.event.timestamp.pts_time;
+                    info.keypress.VA = this_sweep.info.max_logMAR + 0.1 - k*info.keypress.t;
+                    info.keypress.which = this_sweep.trial.which;
+
+
+                case { "right_up", "left_up" } % dropoff point 
+
         
-        
+                    %% keypress time and VA for up-sweep 
+                    info.keypress.t  = this_event.event.timestamp.pts_time;
+                    info.keypress.VA = this_sweep.info.min_logMAR + k*info.keypress.t;
+                    info.keypress.which = this_sweep.trial.which;
+                                
+                otherwise 
+                    error ('Information.');
+            
+            end
+
+        end
+
+   end
+
+
+   %% Output Information 
+   data_export_file = fullfile (d.oknpath, "NT", "VA.json");
+   %savejson([], out, char(data_export_file));
+
+   fid = fopen(data_export_file,'w');
+   fprintf(fid,'%s',jsonencode(info,'PrettyPrint', true));
+   fclose(fid);
+
+
+
+end
+
+
+
+
+%% PRESENTATION SIGNAL UPDATER 
+
+function presentation_signal_updater (each_presentation, d, result, setups);
+      
+  [~,basename,~] = fileparts(d.oknpath);
+  protocol = easy_sweep_protocol (fullfile(d.participantpath, 'protocol.json'));
+   
+   id = sscanf(basename, "clip-%d");
+   this_sweep = protocol.sweep (sprintf("trial-%d", id+1));
+
+   %% new 
+
+   datafile = fullfile (d.oknpath, "NT",'OD.rightward/signal.csv');
+   dataTbl  = readtable (datafile);    
+   [r, q] = get_sweep_activity (dataTbl, this_sweep.info.win_length);
+   dataTbl.activity = r;
+   dataTbl.is_okn    = q;   
+
+   thispath = fileparts(datafile); 
+   updated_datafile = fullfile (thispath, 'signal.updated.csv');
+   writetable (dataTbl, updated_datafile);    
+
+   %% new 
+
+   datafile = fullfile (d.oknpath, "NT",'OD.leftward/signal.csv');
+   dataTbl  = readtable (datafile);    
+   [r, q] = get_sweep_activity (dataTbl, this_sweep.info.win_length);
+   dataTbl.activity = r;
+   dataTbl.is_okn    = q;   
+
+   thispath = fileparts(datafile); 
+   updated_datafile = fullfile (thispath, 'signal.updated.csv');
+   writetable (dataTbl, updated_datafile);    
+
+   %% new 
+   
+   datafile = fullfile (d.oknpath, "NT",'OS.rightward/signal.csv');
+   dataTbl  = readtable (datafile);    
+   [r, q] = get_sweep_activity (dataTbl, this_sweep.info.win_length);   
+   dataTbl.activity = r;
+   dataTbl.is_okn    = q;   
+
+   thispath = fileparts(datafile); 
+   updated_datafile = fullfile (thispath, 'signal.updated.csv');
+   writetable (dataTbl, updated_datafile);    
+
+
+   %% new 
+
+   datafile = fullfile (d.oknpath, "NT",'OS.leftward/signal.csv');
+   dataTbl  = readtable (datafile);    
+   [r, q] = get_sweep_activity (dataTbl, this_sweep.info.win_length);
+   dataTbl.activity = r;
+   dataTbl.is_okn    = q;   
+
+   thispath = fileparts(datafile); 
+   updated_datafile = fullfile (thispath, 'signal.updated.csv');
+   writetable (dataTbl, updated_datafile);    
+
     
 
 end
+
+
+%% PRESENTATION SWEEP VISUALIZER 
+
+function presentation_sweep_visualizer (each_presentation, d, result, setups);
+   
+ [~,basename,~] = fileparts(d.oknpath);
+ protocol = easy_sweep_protocol (fullfile(d.participantpath, 'protocol.json'));
+   
+ id = sscanf(basename, "clip-%d");
+ this_sweep = protocol.sweep (sprintf("trial-%d", id+1));
+
+ this_dirn = this_sweep.trial.which;
+
+figure (1); clf;
+
+subplot(4,1,1);
+inputfile = fullfile (d.oknpath, "NT",'OD.rightward/signal.updated.csv');
+show_webcam_signal_data  (inputfile, this_dirn); 
+title('OD.rightward');
+
+ylabel ('Displacement');   
+xlabel('');
+%yyaxis right; ylabel ('Activity');
+set(gca,'FontSize',22);
+ylim([-8 8]);
+
+
+subplot(4,1,2);
+inputfile = fullfile (d.oknpath, "NT",'OD.leftward/signal.updated.csv');
+show_webcam_signal_data  (inputfile, this_dirn); 
+title('OD.leftward');
+ylim([-8 8]);
+
+%yyaxis left; ylabel ('Displacement');   ;
+%yyaxis right; ylabel ('Activity');
+set(gca,'FontSize',22);
+xlabel('');
+
+
+subplot(4,1,3);
+inputfile = fullfile (d.oknpath, "NT",'OS.rightward/signal.updated.csv');
+show_webcam_signal_data  (inputfile, this_dirn); 
+title('OS.rightward');
+
+ylim([-8 8])
+%yyaxis left; ylabel ('Displacement');   ;
+%yyaxis right; ylabel ('Activity');
+set(gca,'FontSize',22);
+xlabel('');
+
+
+subplot(4,1,4);
+inputfile = fullfile (d.oknpath, "NT",'OS.leftward/signal.updated.csv');
+show_webcam_signal_data  (inputfile, this_dirn); 
+title('OS.leftward');
+
+ylim([-8 8]);
+%yyaxis left; ylabel ('Displacement');   
+%yyaxis right; ylabel ('Activity');
+set(gca,'FontSize',22);
+
+%% save the figure 
+
+f = gcf;
+f.Position = [ 4    56   946   993 ];
+
+outputfile = fullfile (d.figurespath, 'figure');
+savefig (strcat(outputfile,'.fig'));
+exportgraphics(gcf, strcat(outputfile,'.png')); 
+
+end
+
+
+
 
 
 %% READEVENTS
@@ -852,4 +1061,91 @@ function strf = get_standard_name (each_presentation)
     
        
 end
+
+
+%% PRESENTATION SIGNAL UPDATER 
+
+%{
+
+function presentation_signal_updater (each_presentation, d, result, setups);
+      
+  [~,basename,~] = fileparts(d.oknpath);
+  protocol = easy_sweep_protocol (fullfile(d.participantpath, 'protocol.json'));
+   
+   id = sscanf(basename, "clip-%d");
+   this_sweep = protocol.sweep (sprintf("trial-%d", id+1));
+
+   %% new 
+
+   datafile = fullfile (d.oknpath, "NT",'OD.rightward/signal.csv');
+   dataTbl  = readtable (datafile);    
+   [r, q] = get_sweep_activity (dataTbl, this_sweep.info.win_length);
+   dataTbl.activity = r;
+   dataTbl.is_okn    = q;   
+
+   thispath = fileparts(datafile); 
+   updated_datafile = fullfile (thispath, 'signal.updated.csv');
+   writetable (dataTbl, updated_datafile);    
+
+   %% new 
+
+   datafile = fullfile (d.oknpath, "NT",'OD.leftward/signal.csv');
+   dataTbl  = readtable (datafile);    
+   [r, q] = get_sweep_activity (dataTbl, this_sweep.info.win_length);
+   dataTbl.activity = r;
+   dataTbl.is_okn    = q;   
+
+   thispath = fileparts(datafile); 
+   updated_datafile = fullfile (thispath, 'signal.updated.csv');
+   writetable (dataTbl, updated_datafile);    
+
+   %% new 
+   
+   datafile = fullfile (d.oknpath, "NT",'OS.rightward/signal.csv');
+   dataTbl  = readtable (datafile);    
+   [r, q] = get_sweep_activity (dataTbl, this_sweep.info.win_length);   
+   dataTbl.activity = r;
+   dataTbl.is_okn    = q;   
+
+   thispath = fileparts(datafile); 
+   updated_datafile = fullfile (thispath, 'signal.updated.csv');
+   writetable (dataTbl, updated_datafile);    
+
+
+   %% new 
+
+   datafile = fullfile (d.oknpath, "NT",'OS.leftward/signal.csv');
+   dataTbl  = readtable (datafile);    
+   [r, q] = get_sweep_activity (dataTbl, this_sweep.info.win_length);
+   dataTbl.activity = r;
+   dataTbl.is_okn    = q;   
+
+   thispath = fileparts(datafile); 
+   updated_datafile = fullfile (thispath, 'signal.updated.csv');
+   writetable (dataTbl, updated_datafile);    
+
+    
+
+end
+
+%}
+
+
+
+function event = find_keypress_event (sub_events)
+
+    event = [];
+
+    for k = 1:length (sub_events)
+
+        if (strcmpi(sub_events(k).event.event.type, 'key_marker'))
+            event = sub_events(k);
+            
+            return
+        end
+       
+    end
+
+end
+
 

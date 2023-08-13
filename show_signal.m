@@ -12,6 +12,7 @@ function [y0, h] = show_signal (dataTable, profile, varargin)
     p = inputParser ();
     
     p.addOptional ('Title', []);
+    p.addOptional ('showTimePoint', []);    
     p.parse(varargin{:});
     res = p.Results;
     
@@ -56,8 +57,12 @@ function [y0, h] = show_signal (dataTable, profile, varargin)
     % h(2) = line([tp tp+(t(end)-t(1))], [yp yp],  'LineWidth', 1, 'LineStyle', '--');
     % hold on;
     % set(h(2), 'Tag', 'zeroline');
+    
     set(h,'Color','k');
     
+
+
+
     
     
     %% if displayTitle is shown then show it!
@@ -140,4 +145,23 @@ function [y0, h] = show_signal (dataTable, profile, varargin)
         
     end
          
+
+    if (~isempty(res.showTimePoint))
+    
+        tp0 = res.showTimePoint;
+        e = abs(tp0 - t0);
+        [~, i] = min(e);        
+        yp0 = y0(i);
+
+        s = scatter (tp0, yp0, 'o', 'filled', 'MarkerFaceColor', 'k', 'SizeData', 100);
+        oldy = ylim();
+        h = line ([tp0 tp0],[-100 100]);
+        h.Color = 'k';
+        h.LineWidth = 2;
+        h.LineStyle = '--';
+
+        ylim(oldy);
+    end
+
+
 end

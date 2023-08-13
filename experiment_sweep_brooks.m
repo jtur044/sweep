@@ -1,6 +1,8 @@
 
 % main_dir = "/Volumes/okn/DATA/BROOKS/TEST"
-main_dir = "./DATA/BROOKS/TEST"
+% main_dir = "./DATA/BROOKS/TEST"
+
+main_dir = "/Volumes/BACKUP/DATA/BROOKS.WORKING/TEST";
 
 
 % STEP 1 - run OpenFace
@@ -9,27 +11,28 @@ main_dir = "./DATA/BROOKS/TEST"
 
 % STEP 2 - run EyeTracker 
 
-% batch_sweep_webcam_processor (main_dir, "EyeTracker", "dryrun", false);
+%batch_sweep_webcam_processor (main_dir, "EyeTracker", "dryrun", false);
 
 % STEP 3 - run Updater 
 
-% batch_sweep_webcam_processor (main_dir, "Updater", "dryrun", false);
+%batch_sweep_webcam_processor (main_dir, "Updater", "dryrun", false);
 
 % STEP 4 - run Okndetector 
 
+% batch_sweep_webcam_processor (main_dir, "Okndetector", "dryrun", false);
 
-% STEP 5 - Data viewer  
+% STEP 5 - run SignalUpdater add activity fields 
 
-figure (1); clf;
+% batch_sweep_webcam_processor (main_dir, "SignalUpdater", "dryrun", false);
 
-subplot (2,1,1);
-show_webcam_sweep_data  (fullfile(main_dir, 'TESTOKN1_OD1', 'result/eyetrack/clip-1-right_down-sweep_disks/results.updated.csv'), 'right_down', 'eye_pupil_tracker_od'); 
+% STEP 6 - run SweepAnalyzer  (per individual sweep information)
 
-subplot (2,1,2);
-show_webcam_sweep_data  (fullfile(main_dir, 'TESTOKN1_OD1', 'result/eyetrack/clip-3-right_up-sweep_disks/results.updated.csv'), 'right_up', 'eye_pupil_tracker_od'); 
+% batch_sweep_webcam_processor (main_dir, "SweepAnalyzer", "dryrun", false);
 
+% STEP 7 - Data viewer   (individual sweeps)
 
-% configfile = './DATA/BROOKS.PROCESSED/kj_4_18_23/config/eyetracker.webcam-brooks.json';
-% inputfile  = './DATA/BROOKS.PROCESSED/kj_4_18_23/result/eyetracker/results.csv';
-% outputfile = './DATA/BROOKS.PROCESSED/kj_4_18_23/result/eyetracker/results.updated.csv';
-% run_updater (configfile, inputfile, outputfile)
+%batch_sweep_webcam_processor (main_dir, "SweepVisualizer", "dryrun", false);
+
+% STEP 8 - Sweep Viewer
+
+batch_sweep_webcam_reporter (main_dir);
