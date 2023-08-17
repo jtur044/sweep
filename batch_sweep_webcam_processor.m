@@ -837,18 +837,18 @@ function presentation_sweep_analyzer (each_presentation, d, result, setups);
                 case { "right_down", "left_down" } % dropoff point 
 
                     %% keypress time and VA for down-sweep 
-                    info.keypress.t  = this_event.event.timestamp.pts_time;
-                    info.keypress.VA = this_sweep.info.max_logMAR + 0.1 - k*info.keypress.t;
-                    info.keypress.which = this_sweep.trial.which;
+                    info.key.t  = this_event.event.timestamp.pts_time;
+                    info.key.VA = this_sweep.info.max_logMAR + 0.1 - k*info.key.t;
+                    info.key.which = this_sweep.trial.which;
 
 
                 case { "right_up", "left_up" } % dropoff point 
 
         
                     %% keypress time and VA for up-sweep 
-                    info.keypress.t  = this_event.event.timestamp.pts_time;
-                    info.keypress.VA = this_sweep.info.min_logMAR + k*info.keypress.t;
-                    info.keypress.which = this_sweep.trial.which;
+                    info.key.t  = this_event.event.timestamp.pts_time;
+                    info.key.VA = this_sweep.info.min_logMAR + k*info.key.t;
+                    info.key.which = this_sweep.trial.which;
                                 
                 otherwise 
                     error ('Information.');

@@ -62,8 +62,8 @@ for k = 1:M
    %% down_sweep 
  
    VA_info = get_bidrectional_VA (thisTbl, d, eye_code);
-
-    output_VA_info(k) = VA_info;
+   VA_info.eye = thisTbl.eye{1};
+   output_VA_info(k) = VA_info;
 
    %% Setup paths for individual files   
    
@@ -105,7 +105,7 @@ end
 fprintf ('Keypress VA result.\n');
 for k = 1:length (output_VA_info)
     this_code = output_VA_info (k);
-    printout_result (this_code.eye_code, this_code.keypress)
+    printout_result (this_code.eye_code, this_code.key)
 end
 
 
@@ -113,7 +113,8 @@ end
 %textprogressbar (100);
 %textprogressbar ('done.');
 
-writetable (VAinfo_tbl, fullfile(d.overallresult, "VA.csv"));
+[~,basename] = fileparts(d.main_dir);
+writetable (VAinfo_tbl, fullfile(d.overallresult, sprintf("VA_%s.csv", basename)));
 
 
 end
@@ -148,9 +149,9 @@ f3 = false;
      v1 = NaN;
  end
 
- if (isfield(VAinfo, 'keypress'))
-    k1VA = VAinfo.keypress.VA; 
-    k1t  = VAinfo.keypress.t; 
+ if (isfield(VAinfo, 'key'))
+    k1VA = VAinfo.key.VA; 
+    k1t  = VAinfo.key.t; 
     f3   = true;
  else 
     k1VA = NaN;
@@ -176,9 +177,9 @@ f3 = false;
      v2 = NaN;
  end
 
- if (isfield(VAinfo, 'keypress'))
-    k2VA = VAinfo.keypress.VA; 
-    k2t  = VAinfo.keypress.t; 
+ if (isfield(VAinfo, 'key'))
+    k2VA = VAinfo.key.VA; 
+    k2t  = VAinfo.key.t; 
     f4 = true;
 
  else
@@ -197,12 +198,12 @@ f3 = false;
  myinfo.okn.up_t     = t2; 
  myinfo.okn.found_VA = f1 & f2; 
  myinfo.okn.VA       = (v1+v2)/2;
- myinfo.keypress.found_VA = f3 & f4;
- myinfo.keypress.VA       = (k1VA+k2VA)/2;
- myinfo.keypress.down_t   = k1t;
- myinfo.keypress.down_VA  = k1VA;
- myinfo.keypress.up_t     = k2t; 
- myinfo.keypress.up_VA    = k2VA;
+ myinfo.key.found_VA = f3 & f4;
+ myinfo.key.VA       = (k1VA+k2VA)/2;
+ myinfo.key.down_t   = k1t;
+ myinfo.key.down_VA  = k1VA;
+ myinfo.key.up_t     = k2t; 
+ myinfo.key.up_VA    = k2VA;
   
 
  %% stringify the output 

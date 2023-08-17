@@ -23,7 +23,9 @@ result = p.Results;
 
 %% participant level information 
 
-d.main_dir     = main_dir;
+d.main_dir      = main_dir;
+d.overallresult = fullfile (d.main_dir, "result");
+createdirectory (d.overallresult);
 
 
 %% read the manifest FILE 
@@ -62,6 +64,7 @@ for k = 1:M
    VA_info = get_bidrectional_VA (thisTbl, d, eye_code);
 
     output_VA_info(k) = VA_info;
+    output_VA_info(k)
 
    %% Setup paths for individual files   
    
@@ -74,7 +77,6 @@ for k = 1:M
    d.resultpath         = fullerfile (d.participantpath, 'result');  
    d.sweepfigurespath   = fullerfile (d.resultpath, 'figures');        
    
-
    %d.videofile        = fullerfile (main_dir, eachfile);   
    %d.clipspath        = fullerfile(d.main_dir, each_path);   
    %d.openfacepath     = fullerfile (d.resultpath, 'openface', each_name);   
@@ -94,10 +96,26 @@ end
 
 VAinfo_tbl = struct2tableAll(output_VA_info);
 
+fprintf ('Automated VA result.\n');
+for k = 1:length (output_VA_info)
+    this_code = output_VA_info (k);
+    printout_result (this_code.eye_code, this_code.okn)
+
+end
+
+fprintf ('Keypress VA result.\n');
+for k = 1:length (output_VA_info)
+    this_code = output_VA_info (k);
+    printout_result (this_code.eye_code, this_code.key)
+end
+
 
 %% finish
 %textprogressbar (100);
 %textprogressbar ('done.');
+
+writetable (VAinfo_tbl, fullfile(d.overallresult, "VA.csv"));
+
 
 end
 
@@ -131,9 +149,9 @@ f3 = false;
      v1 = NaN;
  end
 
- if (isfield(VAinfo, 'keypress'))
-    k1VA = VAinfo.keypress.VA; 
-    k1t  = VAinfo.keypress.t; 
+ if (isfield(VAinfo, 'key'))
+    k1VA = VAinfo.key.VA; 
+    k1t  = VAinfo.key.t; 
     f3   = true;
  else 
     k1VA = NaN;
@@ -159,9 +177,9 @@ f3 = false;
      v2 = NaN;
  end
 
- if (isfield(VAinfo, 'keypress'))
-    k2VA = VAinfo.keypress.VA; 
-    k2t  = VAinfo.keypress.t; 
+ if (isfield(VAinfo, 'key'))
+    k2VA = VAinfo.key.VA; 
+    k2t  = VAinfo.key.t; 
     f4 = true;
 
  else
@@ -180,16 +198,16 @@ f3 = false;
  myinfo.okn.up_t     = t2; 
  myinfo.okn.found_VA = f1 & f2; 
  myinfo.okn.VA       = (v1+v2)/2;
- myinfo.keypress.found_VA = f3 & f4;
- myinfo.keypress.VA       = (k1VA+k2VA)/2;
- myinfo.keypress.down_t   = k1t;
- myinfo.keypress.down_VA  = k1VA;
- myinfo.keypress.up_t     = k2t; 
- myinfo.keypress.up_VA    = k2VA;
+ myinfo.key.found_VA = f3 & f4;
+ myinfo.key.VA       = (k1VA+k2VA)/2;
+ myinfo.key.down_t   = k1t;
+ myinfo.key.down_VA  = k1VA;
+ myinfo.key.up_t     = k2t; 
+ myinfo.key.up_VA    = k2VA;
   
 
  %% stringify the output 
- % printout_result (eye_code, myinfo.keypress); %% standard 
+ % printout_result (eye_code, myinfo.okn); %% standard 
 
 
 
