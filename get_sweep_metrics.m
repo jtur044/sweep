@@ -20,8 +20,26 @@ p.addOptional ("window_length", 2);
 p.parse(varargin{:});
 res = p.Results;
 
-dataTbl = readtable (signalfile);
-results = readtable (resultfile);
+%% import signal.csv file 
+
+if (ischar(signalfile) | isstring(signalfile))
+    dataTbl = readtable (signalfile);
+elseif (istable (signalfile))
+    dataTbl = signalfile;
+end
+
+%% HACK! add in is_okn field 
+if (~any(ismember(dataTbl.Properties.VariableNames,'is_okn')))
+    % dataTbl.is_okn = dataTbl.chain_id
+end
+
+%% import results.csv
+if (ischar(resultfile) | isstring(resultfile))
+    results = readtable (resultfile);
+elseif (istable (resultfile))
+    results = resultfile;
+end
+
 
 %% maximum OKN 2-chain point 
 %% minimum OKN 2-chain point 
@@ -57,6 +75,8 @@ elseif ((info.ep.found_activity) & (~info.sp.found_activity))
 
 else   %% both activities found 
 
+
+
     % Take lowest and highest times 
     
     info.found_activity = true;  
@@ -76,8 +96,33 @@ function info = end_point_chain (dataTbl, results, min_repeats)
     info.found_onset    = false;    
     info.found_dropoff  = false;
     
-    summary = groupsummary (results, ["is_valid","chain_id"]);
-    i = ((summary.GroupCount >= min_repeats) & (summary.is_valid));
+
+    %% This will list chains that are valid this should use "result_chain_id"
+    results = results(logical(results.is_valid), :);
+    summary = groupsummary (results, "chain_id");
+    %summary = groupsummary (results, ["is_valid","chain_id"]);
+    i = (summary.GroupCount >= min_repeats); % & (summary.is_valid));
+
+    t = dataTbl.t;
+    y = t*0;
+
+    %% this will check if a given the sample of data belongs to a repeating chain
+
+    if (any(i))
+
+        valid_chain_id =  summary(i,:).chain_id;
+        y = ismember (dataTbl.chain_id, valid_chain_id);
+
+        is_sp    = cellfun (@(x) strcmpi(x,'true'), dataTbl.is_sp);
+        is_qp    = cellfun (@(x) strcmpi(x,'true'), dataTbl.is_qp); 
+
+        y = y & (is_sp | is_qp);
+        
+        %is_okn   = ( is_sp | is_qp );
+        %dataTbl2 = dataTbl2(is_okn,:);
+    end
+    
+    info.chain_activity = [ t y  ];
 
     if (~any(i))
         info.onset_t   = 0; % min(dataTbl2.t);
@@ -88,9 +133,17 @@ function info = end_point_chain (dataTbl, results, min_repeats)
     info.found_activity = true;
     summary = summary(i,:);
 
+    %summary
+
     include_chain_id    = summary.chain_id;
-    i = ismember(dataTbl.result_chain_id, include_chain_id); 
+    i  = ismember(dataTbl.result_chain_id, include_chain_id); 
+
+    %% hack to account for not using "result_chain_id"
     dataTbl2 = dataTbl(i,:);
+    %is_sp    = cellfun (@(x) strcmpi(x,'true'), dataTbl2.is_sp);
+    %is_qp    = cellfun (@(x) strcmpi(x,'true'), dataTbl2.is_qp); 
+    %is_okn   = ( is_sp | is_qp );
+    %dataTbl2 = dataTbl2(is_okn,:);
 
     % first and last repeating chained OKN points  
     info.onset_t   = min(dataTbl2.t);
@@ -121,6 +174,15 @@ t = dataTbl.t;
 total_time = max(dataTbl.t);
 M = size(dataTbl,1);
 y = false(M,1);
+
+%% aummary information 
+summary = groupsummary (results, ["is_valid","chain_id"]);
+i = logical(summary.is_valid);
+chains_id = summary.chain_id(i);
+dataTbl.is_valid = ismember(dataTbl.chain_id, chains_id);
+
+global_is_okn = dataTbl.t;
+
 for k = 1:M
 
     start_time = dataTbl.t(k);
@@ -128,29 +190,58 @@ for k = 1:M
     
     i = ((start_time <= dataTbl.t) & (dataTbl.t <= end_time));    
     thisTbl = dataTbl(i,:);
+      
+    is_sp    = cellfun (@(x) strcmpi(x,'true'), thisTbl.is_sp);
+    is_qp    = cellfun (@(x) strcmpi(x,'true'), thisTbl.is_qp); 
+    is_valid = thisTbl.is_valid; 
+    is_okn = ( is_sp | is_qp ) & (is_valid);
 
-    res = bwconncomp(thisTbl.is_okn);
+    res = bwconncomp(is_okn);
     if (res.NumObjects >= min_okn_chains_per_window)
         y(k) = true;
         
-        %% find highest dropoff       
-        info.dropoff_n = find(thisTbl.is_okn, 1, 'last');
-        info.dropoff_t = thisTbl.t(info.dropoff_n);
-        if (info.dropoff_t > info.dropoff_t)
-            info.found_dropoff = true;
-            info.dropoff_t = dropoff_t;
-            info.dropoff_n = dropoff_n;
-        end    
+        %% This window contains separated OKN!
+        
 
-        %% find lowest onset
+        %% ... so find highest dropoff       
+        info.dropoff_n = find(is_okn, 1, 'last');
+        info.dropoff_t = thisTbl.t(info.dropoff_n);
+
+        % revised estimate 
+        i = dataTbl.t == info.dropoff_t;            
+        if (any(i))
+           new_chain_id = dataTbl.result_chain_id(i);
+           n = find(dataTbl.result_chain_id == new_chain_id, 1, 'last');                                
+           info.dropoff_n = n;
+           info.dropff_t = dataTbl.t(n);
+         end
+
+ 
+
+        %% ... and find lowest onset
         if (~info.found_onset)
-            onset_n = find(thisTbl.is_okn, 1, 'first');
+            onset_n = find(is_okn, 1, 'first');
             if (~isempty(onset_n))                
                 info.found_activity = true;
+
+                %% we should check what the earliest point of time is 
+                
+                % first estimate 
+                
                 onset_t = thisTbl.t(onset_n);        
                 info.onset_t = onset_t;
                 info.onset_n = onset_n;
-                info.found_onset = true;   
+                info.found_onset = true;  
+
+                % revised estimate                 
+                i = dataTbl.t == onset_t;            
+                if (any(i))
+                    new_chain_id = dataTbl.result_chain_id(i);
+                    n = find(dataTbl.result_chain_id == new_chain_id, 1);                                
+                    info.onset_n = n;
+                    info.onset_t = dataTbl.t(n);
+                end
+
             end
          end
 
@@ -162,7 +253,7 @@ end
 
 %info.onset_t   = min(dataTbl2.t);
 %info.dropoff_t = max(dataTbl2.t);
-      
+     
 
 info.separated_activity = [ t y ];
 

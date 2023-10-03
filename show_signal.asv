@@ -1,4 +1,4 @@
-function [t0, y0] = show_signal (dataTable, profile, varargin)
+function [to, y0, h, yp0] = show_signal (dataTable, profile, varargin)
 
 % SHOW_SIGNAL Show the SIGNAL file.
 %
@@ -165,12 +165,7 @@ function [t0, y0] = show_signal (dataTable, profile, varargin)
         h.LineWidth = 2;
         h.LineStyle = ':';
 
-        ylim(oldy); dy = abs(y0(2)-y0(1)); 
-        %OBJ = Annotate(AX, TYPE, X, Y)
-
-        %y0 = ylim();        
-        %h = Annotate (gca, "textbox", [tp0, tp0+2], [yp0, yp0+dy/5], 'backgroundcolor', 'none', 'VerticalAlignment', 'bottom', 'string', 'VA=1.0', 'FontSize', 16);
-
+        ylim(oldy);
     end
 
 

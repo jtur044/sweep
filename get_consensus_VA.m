@@ -1,0 +1,145 @@
+function info  = get_consensus_VA (activity, VAinfo)
+
+% GET_CONSENSUS_VA  Return the CONSENSUS VA
+%
+%   info  = get_consensus_VA (activity, VAinfo)
+%
+% where
+%       activity is the activity flag (separated or chain) 
+%       VAinfo   is the sweep information 
+
+% 
+
+
+% (pair_id, id, direction) get the largest time 
+groups = unique(activity (:,["pair_id","id","dirn"]));
+
+%% determine maxT and fps
+
+for k = 1:size(groups, 1)
+
+      i =   (activity.pair_id == groups.pair_id(k)) & ...
+            (activity.id == groups.id(k)) & ... 
+            (activity.dirn == groups.dirn(k));      
+
+      t1 = activity(i,:).t1;
+
+      maxT(k) = max(t1); 
+      minT(k) = min(t1); 
+     
+      fps(k) = 1/mean(diff(t1));
+
+end
+
+maxT = min (maxT);
+minT = max (minT);
+fps  = round(mean(fps));
+dT   = 1/fps;
+
+%% a standardized time-base 
+T    = (minT:dT:maxT).';
+L    = length (T);
+outp = [];
+
+downp = 0*T;
+upp   = 0*T;
+
+%% regenerated table 
+
+headers = { 'time' };
+n1 = 1; n2 = 1;
+for k = 1:size(groups, 1)
+
+      % go through each group 
+
+      i =   (activity.pair_id == groups.pair_id(k)) & ...
+            (activity.id == groups.id(k)) & ... 
+            (activity.dirn == groups.dirn(k));      
+
+      thisData = activity(i,:);               
+      L1 = size(thisData,1);
+
+      thisData = unique(thisData,'rows');
+      L2 = size(thisData,1);
+
+      if (L1 ~= L2)
+        fprintf ('non-unique rows found (%d)\n', abs(L2-L1));
+      
+      end
+
+      y1 = interp1 (thisData.t1, double(thisData.sp1 | thisData.ep1), T);
+      
+      outp = [ outp; groups.pair_id(k)*ones(L,1) groups.id(k)*ones(L,1) groups.dirn(k)*ones(L,1) T y1 ];
+      dirn = sign(groups.dirn(k));
+
+
+      switch (dirn)
+
+          case { -1 } % down 
+              downp(:,n1) = y1;
+              down_headers{n1} = num2str(groups.pair_id(k));  
+              n1 = n1 + 1;
+
+          case { +1 } % up
+              upp(:,n2) = y1;
+              up_headers{n2} = num2str(groups.pair_id(k));  
+              n2 = n2 + 1;
+          
+          otherwise
+              error ('Unknown logic.');
+
+      end
+end
+
+%% summary information 
+
+outp = array2table (outp, "VariableNames", { 'pair_id','id', 'dirn', 't', 'activity' } );
+
+%% add the time base 
+
+d1 = mean(downp',1)'; 
+u1 = mean(upp',1)'; 
+
+down_headers = [ 't' down_headers 'total' ];
+up_headers   = [ 't' up_headers 'total' ];
+
+downp = [ T downp d1 ];
+upp   = [ T upp u1 ];
+
+downTbl = array2table (downp, "VariableNames", down_headers);
+upTbl   = array2table (upp, "VariableNames", up_headers);
+
+%% downward VA 
+
+k = VAinfo.ratio;
+
+i = downTbl.total >= 0.5;
+[max_t, n]          = max(T(i));
+info.raw            = outp;
+info.down.table     = downTbl;
+info.down.time      = T;
+info.down.activity  = downTbl.total;  %% the total down activity 
+info.down.t         = max_t;
+info.down.y         = downTbl.total(n); 
+info.down.VA        = VAinfo.max_logMAR + 0.1 - abs(k)*info.down.t;
+
+
+%% upward VA 
+i = upTbl.total >= 0.5;
+if (~any(i))
+    min_t = nan;
+    info.up.y           = nan; 
+else
+    [min_t, n]          = min(T(i));
+    info.up.y           = upTbl.total(n); 
+end
+
+info.up.table       = upTbl;
+info.up.time        = T;
+info.up.activity    = upTbl.total;  %% the total up activity
+info.up.t           = min_t;
+info.up.VA          = VAinfo.min_logMAR  + abs(k)*info.up.t;
+info.meanVA         = (info.up.VA + info.down.VA)/2;
+
+
+end
