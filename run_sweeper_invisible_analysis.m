@@ -1,4 +1,4 @@
-function finalTbl = run_sweep_invisible_analysis  (sweep_dir)
+function finalTbl = run_sweeper_invisible_analysis  (sweep_dir)
 
 % RUN_SWEEP_INVISIBLE_ANALYSIS 
 %
@@ -17,6 +17,7 @@ end
 [~,basename]        = fileparts (sweep_dir);
 d.basename          = basename;
 d.timeline_file     = fullfile(sweep_dir, 'timeline.json');
+d.events_file       = fullfile(sweep_dir, 'events.json');
 d.protocol_file     = fullfile(sweep_dir, 'protocol.json');
 d.trials_dir        = fullfile(sweep_dir, 'trials/trial*');
 d.outputVAfile      = fullfile(sweep_dir, 'trials', 'VA.csv');
@@ -32,110 +33,165 @@ createdirectory (d.consensusVAdir);
 d.sweepVAfile       = fullfile(d.sweepVAdir, 'sweepVA.csv');
 d.sweepsummaryfile  = fullfile(d.sweepVAdir, 'summary.json');
 
-protocol = easy_sweep_protocol (d.protocol_file);
-trial_keys = protocol.sweep.keys();
+protocol            = easy_sweeper_protocol (d.protocol_file);
+sweep_parms         = protocol.sweep_set.x0x5F_parameters;
+events              = load_commented_json (d.events_file);
 
-trial_keys = natsort(trial_keys);
- 
+
+%% Generate a "trials" object (contains information for each sweep)
+
+
+
+trials = containers.Map ();
+count = 1;
+for q = 1:length(protocol.timeline)
+    each = protocol.timeline{q};
+    if (strcmpi(each.type,'sweeper_disks'))
+
+        sweep_steps = protocol.sweep_set.(each.which);
+        event_type = { sweep_steps.sweep.event_type };
+        i = ismember (event_type, 'sweep');
+
+        first = sweep_steps.sweep(1);
+        last  = sweep_steps.sweep(end);
+
+        this_trial.key               = sprintf('%s_%s', each.id, each.which);        
+        this_trial.id                = each.id;
+        this_trial.which             = each.which;
+        this_trial.step_duration     = (protocol.sweep_set.step_duration.sweep/1000); % in seconds       
+        this_trial.steps             = sum(i);
+        this_trial.logMAR            = sweep_parms.logMAR; 
+        this_trial.ratio             = (last.logMAR - first.logMAR)/(this_trial.step_duration*(this_trial.steps-1));  
+        this_trial.sweep_direction   = sign (last.logMAR - first.logMAR);        
+        this_trial.direction         = sweep_steps.x0x5F_parameters.direction;
+
+        %% add sweeper events 
+        [sweep_event, sub_events]    = find_sweeper_in_events(events, this_trial.id);
+        this_trial.sweep_event       = sweep_event;
+        this_trial.sub_events        = sub_events;   %% sweep ONLY events
+        this_trial.start_event       = sub_events(1);
+        this_trial.start_time        = sub_events(1).sensor_timestamp - this_trial.sweep_event.start.sensor_timestamp; 
+        trials(this_trial.key) = this_trial;        
+        count = count + 1;
+    end
+end
+
+% trial_keys = natsort(trial_keys);
+
+
+%% additional SWEEP information 
+% p = protocol.sweep_set;
+% this_sweep_info.step_duration = p.step_duration.sweep; 
+% this_sweep_info.logMAR        = p.x0x5F_parameters.logMAR; 
+
 
 activity = [];
 
+%% read names in trials directory 
+trials_list = dir (d.trials_dir);
+trial_names = { trials_list.name };
+trial_keys  = trials.keys();
 
-trials = dir (d.trials_dir);
-trial_names = { trials.name };
+%textprogressbar ('running : ');
 
-for m = 1:length (trial_keys)
+M = length (trial_keys);
 
-    each_trial_key = trial_keys{m};
+for m = 1:M     %% cycle through keys
+
+    %textprogressbar (m/M*100);
     
-    %% we have a valid trial 
-    i = contains (trial_names, strcat(each_trial_key,'_'));
-
+    %% cross-check with the current "trial_key" 
+    each_trial_key = trial_keys{m};    
+    i = contains (trial_names, each_trial_key);
     if (~any(i))
         error ("trial wasnt found");
     end
-
     if (sum(i) > 1)
         error ("repeating trials");
     end
 
-    %% information 
-    this_sweep_info = protocol.sweep(each_trial_key).info;
-    this_trial = trials (i);
-    this_trial_name = trial_names(i);
 
-    %% information 
-
+    %% located information ... so get it!
+    this_trial      = trials_list (i); % from directory
+    this_trial_name = this_trial.name;
     signalfile = fullfile(this_trial.folder, this_trial.name, "result", "signal.csv");
     jsonfile   = fullfile(this_trial.folder, this_trial.name, "result", "result.json");
     resultfile = fullfile(this_trial.folder, this_trial.name, "result", "result.csv");
-
     if (((exist(jsonfile) > 0) & (~(exist(resultfile) > 0))))
         str_cmd = sprintf('oknconvert -i "%s"', jsonfile);
         system (str_cmd);
     end
-
     sigTbl    = readtable (signalfile);
     resultTbl = readtable (resultfile);
-    
-    % this will detect both "onset" and "dropoff" VA from activity
-    
+
+
+
+    %% analyze the data  
+
     info = get_sweep_metrics (sigTbl, resultTbl);
-   
-    %% seperated activity 
-
-
-
-    % if we can detect whether this is a downward sweep or upward 
-
-    k = this_sweep_info.ratio;
 
     output(m).name           = this_trial_name;
     output(m).id             = m;    
-    output(m).pair_id         = floor((m-1)/2)+1;    
-    output(m).k              = k;
+    output(m).pair_id        = floor((m-1)/2)+1;    
+    output(m).k              = trials(each_trial_key).ratio;  %% signed sweep direction
     output(m).found_activity = info.found_activity;
     output(m).signalfile     = signalfile;
     output(m).resultcsvfile  = resultfile;
     output(m).timelinefile   = string(d.timeline_file);
-    
 
-    %% separated activity 
-    L = size(info.sp.separated_activity, 1);
-    activity = [  activity ; output(m).pair_id*ones(L,1) output(m).id*ones(L,1)  output(m).k*ones(L,1) info.sp.separated_activity info.ep.chain_activity ];
+    %% add the start time 
+    this_sweep_trial     = trials(each_trial_key);
+    start_time           = this_sweep_trial.start_time;
+    output(m).start_time = start_time; 
 
-
-    switch (sign(k))
+    %% add the estimated VA
+    switch (sign(this_sweep_trial.sweep_direction))
 
         case { -1 }
-                output(m).VA = this_sweep_info.max_logMAR + 0.1 + k*info.dropoff_t;
+                output(m).VA = this_sweep_trial.logMAR.max + 0.1 + this_sweep_trial.ratio*(info.dropoff_t - start_time);
                 output(m).t  = info.dropoff_t;
     
         case { +1 }
                 
-                output(m).VA = this_sweep_info.min_logMAR + k*info.onset_t;
+                output(m).VA = this_sweep_trial.logMAR.min + this_sweep_trial.ratio*(info.onset_t - start_time);
                 output(m).t  = info.onset_t;
 
         otherwise 
             error ('No signed ratio set');
     end
 
-    %% need to save these VA to an output file 
-    %fprintf ('k = %4.2f, VA = %4.2f\n', k, info.VA);
+    %% activity matrix for CONSENSUS method  
+    L = size(info.sp.separated_activity, 1);
+    activity = [  activity ; output(m).pair_id*ones(L,1) output(m).id*ones(L,1)  output(m).k*ones(L,1) info.sp.separated_activity info.ep.chain_activity ];
+
+
+    %% save these VA to an output file 
+    fprintf ('"%s" k = %4.2f, t=%4.2f, st = %4.2f, VA = %4.2f\n', each_trial_key, output(m).k, output(m).t,  start_time, output(m).VA);
     %info
 end
+
+%textprogressbar ('done.');
+
 
 fprintf ('writing ... %s\n', d.outputVAfile);
 outTbl = struct2table(output);
 writetable(outTbl, d.outputVAfile); 
 
-%% generate consensus paired ACTIVITY SIGNAL 
+%% convert to a TABLE for ACTIVITY SIGNAL 
+%  put into old format to call get_consensus_VA
+%
+% just requires some genral information 
+%
+%   logMAR.max, logMAR.min, logMAR.step
+%
+
+%% there  shoud 
+va_info.logMAR.max = 1.0;
+va_info.logMAR.min = 0.0;
+va_info.ratio      = 0.05;
 
 activity = array2table (activity, "VariableNames", { 'pair_id','id', 'dirn', 't1', 'sp1', 't2', 'ep1' } );
-%writetable (activity, 'activity.csv');
-
-
-consensus_info  = get_consensus_VA (activity, this_sweep_info);
+consensus_info  = get_consensus_VA (activity, va_info);
 
 simple.meanVA     = consensus_info.meanVA;
 simple.dropoff_t  = consensus_info.down.t;

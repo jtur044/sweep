@@ -7,8 +7,16 @@
 %sweep_dir = './DATA/2Aug2023/jton_02_08_2023_sweep_left';
 %run_sweep_invisible_analysis (sweep_dir);
 
+
+% SWEEPER PROTOCOL 
+
+main_dir = './DATA/10Oct2023';   %% Example DIR 
+
+
+% "SWEEP"
+% 
 % main_dir = './DATA/24Sep2023';   %% Example DIR 
-main_dir = './DATA/12Sep2023';   %% Example DIR 
+%  main_dir = './DATA/12Sep2023';   %% Example DIR 
 % main_dir = './DATA/7Sep2023';   %% Example DIR 
 % main_dir = './DATA/5Sep2023';   %% Example DIR 
 % main_dir = './DATA/12July2023';   %% Example DIR 
@@ -19,6 +27,10 @@ main_dir = './DATA/12Sep2023';   %% Example DIR
 % main_dir = './DATA/25Aug2023';  %% Example DIR 
 % main_dir = './DATA/11Aug2023';  %% Example DIR 
 
+
+% VA for :
+
+clear textprogressbar;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MAIN 
@@ -54,32 +66,13 @@ for k = 1:M
     end
 
     each_sweep_dir = fullfile (main_dir,eachdir);
-    if (contains(eachdir,'sweep') & isfolder(each_sweep_dir))    
+
+    if (contains(eachdir, { 'sweeper' }) & isfolder(each_sweep_dir))    
+        fprintf ('found ... %s [sweeper]\n', eachdir);
+        run_sweeper_invisible_analysis (each_sweep_dir);
+    elseif (contains(eachdir, { 'sweep' }) & isfolder(each_sweep_dir))    
         fprintf ('found ... %s\n', eachdir);
         run_sweep_invisible_analysis (each_sweep_dir);
     end
 end
-
-%% Information 
-
-
-%{
-
-% STEP 1 - run SweepAnalyzer  (per individual sweep information)
-%
-% Calculate the VA for the individual SWEEPS 
-%
-
-batch_sweep_invisible_processor (main_dir, "SweepAnalyzer", "dryrun", false);
-
-% STEP 4 - Data viewer   (individual sweeps)
-
-batch_sweep_processor (main_dir, "SweepVisualizer", "dryrun", false);
-
-% STEP 5 - Sweep Viewer
-
-batch_sweep_reporter (main_dir);
-
-
-%}
 

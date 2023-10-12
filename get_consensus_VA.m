@@ -7,8 +7,18 @@ function info  = get_consensus_VA (activity, VAinfo)
 % where
 %       activity is the activity flag (separated or chain) 
 %       VAinfo   is the sweep information 
+%                       
+%                   max  : 1.0
+%                   min  : 0.0
+%                   step : 0.1
+%
 
-% 
+
+if (isfield(VAinfo, 'logMAR'))    
+    VAinfo.max_logMAR = VAinfo.logMAR.max;
+    VAinfo.min_logMAR = VAinfo.logMAR.min;
+    VAinfo.ratio      = VAinfo.ratio;       % *VAinfo.sweep_direction;
+end
 
 
 % (pair_id, id, direction) get the largest time 

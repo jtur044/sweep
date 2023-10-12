@@ -228,23 +228,23 @@ end
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function get_first_timestamp (sweep_event, sub_events)
+function start_timestamp = get_first_timestamp (sweep_event, sub_events)
 
     % find the first appropriate timestamp 
-   if (strcmpi(sweep_event.event.trial_type, 'sweep_disks'))
+   if (strcmpi(sweep_event.start.event.trial_type, 'sweep_disks'))
 
        % standard is to take the first event 
        start_timestamp = sub_events(1).event.timestamp.pts_time;        
        return
 
-   elseif strcmpi(sweep_event.event.trial_type, 'sweeper_disks'))
+   elseif strcmpi(sweep_event.start.event.trial_type, 'sweeper_disks')
 
        % take the first 'sweep'         
        n = length (sub_events);
        for k = 1:n
-           this_event = sub_events(k).event.event; 
-           if (strcmpi(this_event.event,'sweep') && (this_event.sweep_counter == 0))
-                start_timestamp = this_event.event.timestamp.pts_time;
+           this_event = sub_events(k).event; 
+           if (strcmpi(this_event.event.event_category,'sweep') && (this_event.event.sweep_counter == 0))
+                start_timestamp = this_event.timestamp.pts_time;
                 return
            end
        end
@@ -381,6 +381,16 @@ end
 
 function [each_timeline_item, events] = find_sweep (timeline, which_sweep, sweep_number)
 
+% FIND_SWEEP Find the sweep 
+%
+%   [main_event, sub_events] = find_sweep (timeline, which_sweep)
+%
+% where 
+%       main_event   is the over-arching event 
+%       sub_events   is a list of sub-events 
+%
+
+
     events = [];
     each_timeline_item = [];
 
@@ -393,7 +403,7 @@ function [each_timeline_item, events] = find_sweep (timeline, which_sweep, sweep
         %each_timeline_item;
 
         %% find sweep overall event 
-        if (isfield(each_timeline_item, 'start') && (strcmpi(each_timeline_item.start.event.trial_type, { "sweep_disks", "sweeper_disks" })))
+        if ((isfield(each_timeline_item, 'start')) & (any(strcmpi(each_timeline_item.start.event.trial_type, { 'sweep_disks', 'sweeper_disks' }))))
 
             
             %% check which type of sweep  
@@ -415,7 +425,7 @@ function [each_timeline_item, events] = find_sweep (timeline, which_sweep, sweep
     end
 
 
-    error (sprintf('Didnt find %s %s', which_sweep, sweep_number));
+    error (sprintf('Didnt find %s', which_sweep));
 
 end
 

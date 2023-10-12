@@ -8,6 +8,16 @@ function info = get_sweep_metrics (signalfile, resultfile, varargin)
 %       signalfile  is the information 
 %       resultfile  is the information 
 %
+% Returns:
+%
+% Info
+%
+%   ep      - repeated  OKN signal 
+%   sp      - separated OKN signal 
+%   found_activity = false;
+%   onset_t   = 0; 
+%   dropoff_t = 0; 
+%
 
 p = inputParser ();
 
