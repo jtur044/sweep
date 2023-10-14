@@ -40,8 +40,6 @@ events              = load_commented_json (d.events_file);
 
 %% Generate a "trials" object (contains information for each sweep)
 
-
-
 trials = containers.Map ();
 count = 1;
 for q = 1:length(protocol.timeline)
@@ -64,13 +62,22 @@ for q = 1:length(protocol.timeline)
         this_trial.ratio             = (last.logMAR - first.logMAR)/(this_trial.step_duration*(this_trial.steps-1));  
         this_trial.sweep_direction   = sign (last.logMAR - first.logMAR);        
         this_trial.direction         = sweep_steps.x0x5F_parameters.direction;
+        
+        %% add all events (entry, sweep, exit) 
+        
 
         %% add sweeper events 
-        [sweep_event, sub_events]    = find_sweeper_in_events(events, this_trial.id);
-        this_trial.sweep_event       = sweep_event;
-        this_trial.sub_events        = sub_events;   %% sweep ONLY events
-        this_trial.start_event       = sub_events(1);
-        this_trial.start_time        = sub_events(1).sensor_timestamp - this_trial.sweep_event.start.sensor_timestamp; 
+        [sweep_event, sub_events]    = find_sweeper_in_events(events, this_trial.id);  
+        this_trial.sweep_event       = sweep_event;                                     % main sweeper 
+        this_trial.sub_events        = sub_events;                                      % all events
+        this_trial.start_event       = find_first_event(sub_events, "sweep");           % first sweep event
+        this_trial.end_event         = find_first_event(sub_events, "exit");           % first sweep event
+                
+        %% SENSOR time-stamp based START & END times
+        this_trial.start_time        = this_trial.start_event.sensor_timestamp - this_trial.sweep_event.start.sensor_timestamp; 
+        this_trial.end_time          = this_trial.end_event.sensor_timestamp - this_trial.sweep_event.start.sensor_timestamp; 
+
+
         trials(this_trial.key) = this_trial;        
         count = count + 1;
     end
@@ -128,7 +135,7 @@ for m = 1:M     %% cycle through keys
 
     %% analyze the data  
 
-    info = get_sweep_metrics (sigTbl, resultTbl);
+    info = get_sweep_metrics (sigTbl, resultTbl); 
 
     output(m).name           = this_trial_name;
     output(m).id             = m;    
@@ -138,23 +145,69 @@ for m = 1:M     %% cycle through keys
     output(m).signalfile     = signalfile;
     output(m).resultcsvfile  = resultfile;
     output(m).timelinefile   = string(d.timeline_file);
+    output(m).eventsfile     = string(d.events_file);
+    
 
     %% add the start time 
     this_sweep_trial     = trials(each_trial_key);
     start_time           = this_sweep_trial.start_time;
-    output(m).start_time = start_time; 
+    output(m).start_time = start_time;                  %% start-time using sensor_timestamp 
+    end_time             = this_sweep_trial.end_time;
+    output(m).start_time = end_time;                    %% end-time using sensor_timestamp 
 
-    %% add the estimated VA
+    % entry_event_record_timestamp = get_record_timestamp (sigTbl, this_sweep_trial.start_event.sensor_timestamp);
+    % sweep_event_record_timestamp = get_record_timestamp (sigTbl, this_sweep_trial.sweep_event.start.sensor_timestamp);
+    
+
+    %% add the estimated per sweep-VA
     switch (sign(this_sweep_trial.sweep_direction))
 
         case { -1 }
-                output(m).VA = this_sweep_trial.logMAR.max + 0.1 + this_sweep_trial.ratio*(info.dropoff_t - start_time);
-                output(m).t  = info.dropoff_t;
-    
+
+                if (info.dropoff_t <= start_time)   % dropoff before start               
+                    output(m).VA       = this_sweep_trial.logMAR.max + 0.1;
+                    output(m).t        = start_time;
+                    output(m).bounded  = false;
+
+                elseif (info.dropoff_t >= end_time) % dropoff after start 
+
+                    output(m).VA       = this_sweep_trial.logMAR.min;
+                    output(m).t        = end_time;
+                    output(m).bounded  = false;
+
+                else                                % dropoff in-between
+
+                    output(m).VA = this_sweep_trial.logMAR.max + 0.1 + this_sweep_trial.ratio*(info.dropoff_t - start_time);
+                    output(m).t  = info.dropoff_t;
+                    output(m).bounded  = true;
+                end
+
+
         case { +1 }
+
                 
-                output(m).VA = this_sweep_trial.logMAR.min + this_sweep_trial.ratio*(info.onset_t - start_time);
-                output(m).t  = info.onset_t;
+                if (info.onset_t <= start_time)   % onset before start               
+                    
+                    output(m).VA       = this_sweep_trial.logMAR.min;
+                    output(m).t        = start_time;
+                    output(m).bounded  = false;
+
+                elseif (info.onset_t >= end_time) % dropoff after start 
+
+                    output(m).VA       = this_sweep_trial.logMAR.max + 0.1;
+                    output(m).t        = end_time;
+                    output(m).bounded  = false;
+
+                else                                % dropoff in-between
+
+                    output(m).VA = this_sweep_trial.logMAR.min + this_sweep_trial.ratio*(info.onset_t - start_time);
+                    output(m).t  = info.dropoff_t;
+                    output(m).bounded  = true;
+                end
+
+              
+     
+
 
         otherwise 
             error ('No signed ratio set');
@@ -186,12 +239,12 @@ writetable(outTbl, d.outputVAfile);
 %
 
 %% there  shoud 
-info.logMAR.max = 1.0;
-info.logMAR.minax = 0.0;
-info.ratio      = 0.05;
+va_info.logMAR.max = 1.0;
+va_info.logMAR.min = 0.0;
+va_info.ratio      = 0.05;
 
 activity = array2table (activity, "VariableNames", { 'pair_id','id', 'dirn', 't1', 'sp1', 't2', 'ep1' } );
-consensus_info  = get_consensus_VA (activity, sweep_parms);
+consensus_info  = get_consensus_VA (activity, va_info);
 
 simple.meanVA     = consensus_info.meanVA;
 simple.dropoff_t  = consensus_info.down.t;
@@ -219,6 +272,14 @@ fprintf ('writing ... %s\n', d.sweepVAfile);
 writetable(overall, d.sweepVAfile); 
 
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% VISUALIZER 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 figure (2); clf;  %% down-sweep 
 f = gcf; f.Position = [ -27 60 800 1000 ];
 figure (3); clf;  %% up-sweep
@@ -228,8 +289,15 @@ pair_ids = unique(overall.pair_id);
 K = length (pair_ids);
 for k = 1:K
         
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% VISUALIZE PAIRS 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % this_sweep_trial     = trials(each_trial_key);
+
     figure (1); clf;
-    paired_sweep_visualizer (overall.pair_id(k), outTbl);
+    paired_sweeper_visualizer (overall.pair_id(k), outTbl, trials);
 
     %% save that as FIGURES 
     
@@ -246,79 +314,115 @@ for k = 1:K
     savefig (figfile);
     exportgraphics (gcf,pngfile);
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% VISUALIZE ONLY DOWN 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
     figure (2);   %% down plot visualizer 
-    h = subplot (K+1,1,k);        
-    [y0, t0] = single_sweep_visualizer (overall.pair_id(k), -1, outTbl, consensus_info.raw);    
+    a_down(k) = subplot (K+1,1,k);    
+
+    %a1 = a.Position;
+    %ratio  = a1(4)/a1(3);
+    %a1(3) = 0.99*a1(3);
+    %a1(4) = 0.95*a1(4); 
+
+    xlim_down(k,1:2) = single_sweeper_visualizer (a_down(k), overall.pair_id(k), -1, outTbl, trials);    
     hold on; 
     
     %subplot_down(k) = get(h,'position');
 
     %% show consensus information 
-    t = consensus_info.down.t;
-
-    if (~isempty(t))
-
-        [t0, i] = unique(t0);
-        y0 = y0(i);    
-        y = interp1(t0,y0,t, 'nearest'); % returfind_nearest(t, []);
-        h0 = line    ([ t t], [-10 10], 'LineWidth', 2, 'LineStyle', ':', 'Color', 'k')
-
-    end
-
-    yyaxis right; ylim([-0.2 0.2]);
-    yyaxis left;  ylim([-0.5 5]);
+    %t = consensus_info.down.t;
+    %
+    %if (~isempty(t))
+    %
+    %        [t0, i] = unique(t0);
+    %    y0 = y0(i);    
+    %    y = interp1(t0,y0,t, 'nearest'); % returfind_nearest(t, []);
+    %    h0 = line    ([ t t], [-10 10], 'LineWidth', 2, 'LineStyle', ':', 'Color', 'k')
+    %
+    %    end
+    %
+    %% set axes 
+    %yyaxis right; ylim([-0.2 0.2]);
+    %yyaxis left;  %ylim([-0.5 5]);
+    
     box(gca,'on');
     set(gca,'LineWidth', 1.0);
     set(gca,'FontSize', 16);
     grid off;
-    
-    if (k > 1)
-       
+        
+    %% empty aces 
+    if (k > 1)       
         yyaxis left;
-        set(gca,'XTick',[], 'YTick', [])
+        set(gca,'XTick',[], 'YTick', []);
+        ylabel('');
         yyaxis right;
         set(gca,'XTick',[], 'YTick', [])
     end
 
-    %show_label_VA (consensus_info.down.VA, -1);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% VISUALIZE ONLY UP 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
     figure (3);    %% up plot visualizer  
-    h = subplot (K+1,1,k);
-   
-    [y0, t0] = single_sweep_visualizer (overall.pair_id(k), +1, outTbl, consensus_info.raw);    
+    a_up(k) = subplot (K+1,1,k);
+
+
+    %a1 = a.Position;
+    %ratio  = a1(4)/a1(3);
+    %a1(3) = 0.99*a1(3);
+    %a1(4) = 0.95*a1(4); 
+    
+    xlim_up(k,1:2) = single_sweeper_visualizer (a_up(k), overall.pair_id(k), +1, outTbl, trials);    
     hold on; 
 
-    %% deal with repeated data
-    [t0, i] = unique (t0);
-    y0 = y0(i);
+    % single_sweeper_visualizer (a, overall.pair_id(k), +1, outTbl, consensus_info.raw);    
+    % hold on; 
 
-
-    %% show consensus information 
-    hold on;
-    t = consensus_info.up.t;    
-
-    if (~isempty(t))
-
-        y = interp1(t0,y0,t, 'nearest'); % returfind_nearest(t, []);
-        scatter (t, y, 'SizeData', 10, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k')
-        h0 = line    ([ t t], [-10 10], 'LineWidth', 2, 'LineStyle', ':', 'Color', 'k')
-    end
-
-    yyaxis right;  ylim([-0.2 0.2]);
-    yyaxis left;  ylim([-0.5 5]);
+    %%% deal with repeated data
+    %[t0, i] = unique (t0);
+    %y0 = y0(i);
+    %
+    %
+    % %% show consensus information 
+    % hold on;
+    % t = consensus_info.up.t;    
+    %
+    % if (~isempty(t))
+    %
+    %    y = interp1(t0,y0,t, 'nearest'); % returfind_nearest(t, []);
+    %    scatter (t, y, 'SizeData', 10, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k')
+    %    h0 = line    ([ t t], [-10 10], 'LineWidth', 2, 'LineStyle', ':', 'Color', 'k')
+    % end
+    %
+    %% set axes 
+    %yyaxis right;  ylim([-0.2 0.2]);
+    %yyaxis left;  %ylim([-0.5 5]);
+    
     box(gca,'on');
     set(gca,'LineWidth', 1.0);
     set(gca,'FontSize', 16);    
     grid off;
 
-    if (k > 1)
-       
+    %% empty out axes 
+    if (k > 1)       
         yyaxis left;
-        set(gca,'XTick',[], 'YTick', [])
+        set(gca,'XTick',[], 'YTick', []);
+        ylabel('');
         yyaxis right;
-        set(gca,'XTick',[], 'YTick', [])
-
+        set(gca,'XTick',[], 'YTick', []);
     end
     
     % 
@@ -329,47 +433,39 @@ for k = 1:K
 
 end
 
-%% Fig 2 & 3 require the overall signal 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% FIG 2 - ADD ADDITIONAL TO DOWN ONLY GRAPHS 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure (2);  %% down 
 
-subplot (K+1,1,1);
-%title ('Descending sweep');
-
+%% Label the TOP line 
 subplot (K+1,1,1); 
 xlabel ('logMAR');
 
+%% Add CONSENSUS graph
 h = subplot (K+1,1,K+1);        
-plot(consensus_info.down.time, consensus_info.down.activity, 'k-', 'LineWidth', 2);
-ylim([-0.1 2]);
-xlim([ 0 max(consensus_info.down.time)]);
-grid on;
-%title ('Total OKN activity');
-xlabel ('Time (seconds)');
-hold on;
+show_consensus (consensus_info.down);
 
-%t = consensus_info.down.t;
-%y = consensus_info.down.y;
-%scatter (t, y, 'SizeData', 20, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k')
 
-if (~isempty(t))
-    line    ([ t t], [-2 2], 'LineWidth', 2, 'LineStyle', ':', 'Color', 'k')
-end
+%% SET X-LIMITS
+xl = min(xlim_down);
+xlim([ a_down h ],xl);
+set(a_down,'FontSize', 16);    
 
-show_label_VA (consensus_info.down.VA, -1, "consensus ");
-
-box(gca,'on');
-set(gca,'LineWidth', 1.0);
-grid off;
-set(gca,'FontSize', 16);    
 
 f = gcf; f.Position = [ -27 60 800 1000 ];
-
-
 
 pngfile = fullfile(d.figuresdir, sprintf('fig_%s_descending.png', d.basename));
 exportgraphics (gcf, pngfile);
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% FIG 3 - ADD ADDITIONAL TO UP ONLY GRAPHS 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure (3);  %% up 
 
@@ -379,28 +475,31 @@ subplot (K+1,1,1);
 subplot (K+1,1,1); 
 xlabel ('logMAR');
 
-h = subplot (K+1,1,K+1);        
-plot(consensus_info.up.time, consensus_info.up.activity, 'k-', 'LineWidth', 2);
-ylim([-0.1 2]);
-xlim([ 0 max(consensus_info.up.time)]);
-grid on;
-%title ('Total OKN activity');
-xlabel ('Time (seconds)');
+h = subplot (K+1,1,K+1);  
+show_consensus (consensus_info.up);
 
 
 %% show consensus information 
-hold on;
+%hold on;
 %t = consensus_info.up.t;
 %y = consensus_info.up.y;
 %scatter (t, y, 'SizeData', 20, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k')
-if (~isempty(t))
-    line    ([ t t], [-2 2], 'LineWidth', 2, 'LineStyle', ':', 'Color', 'k')
-end
 
-show_label_VA (consensus_info.up.VA, +1, "consensus ");
+%if (~isempty(t))
+%    line    ([ t t], [-2 2], 'LineWidth', 2, 'LineStyle', ':', 'Color', 'k')
+%end
+%
+%show_label_VA (consensus_info.up.VA, +1, "consensus ");
 
-box(gca,'on');
-set(gca,'LineWidth', 1.0);
+
+
+%% SET X-LIMITS
+xl = min(xlim_up);
+xlim(a_up,xl);
+set(a_down,'FontSize', 16);    
+
+%box(gca,'on');
+%set(gca,'LineWidth', 1.0);
 grid off;
 set(gca,'FontSize', 16);    
 
@@ -423,76 +522,6 @@ fprintf ('writing ... %s\n', d.sweepsummaryfile);
 savejson([], summary, d.sweepsummaryfile); 
 
 end
-
-function show_label_VA (VA, dirn, extra_str, varargin)
-
-p = inputParser ();
-p.addOptional ("SuppressUnit", false);
-p.parse(varargin{:});
-res = p.Results;
-
-if (nargin ==2)
-    extra_str = '';
-end
-
-
-if  (res.SuppressUnit)
-    str_unit = ''; 
-else
-    str_unit = ' logMAR';
-end
-
-
-if (dirn == -1)
-
-    if (isfinite(VA))
-        VA_string = strcat(extra_str, sprintf ('VA↓ = %4.2f', VA), str_unit); % OD.rightward.VA); 
-    else
-        VA_string = strcat(extra_str, 'VA↓ not found.'); % OD.rightward.VA);
-    end
-    
-    a = gca;
-    a1 = a.Position;
-    k  = a1(4)/a1(3);
-    a1(3) = 0.99*a1(3);
-    a1(4) = 0.9*a1(4);    
-    %a1(1) = a1(1)*1.05;
-    %a1(2) = a1(2)*0.99;
-    t = annotation('textbox','String',VA_string,'Position',a1,'Vert','top','HorizontalAlignment', 'right', 'FitBoxToText','on');    
-    t.FontSize = 14;
-    t.BackgroundColor = 'w';
-    t.LineWidth = 1.5;
-
-end
-
-
-if (dirn == +1)
-    
-    if (isfinite(VA))
-        VA_string = strcat(extra_str, sprintf ('VA↑ = %4.2f', VA), str_unit); % OD.rightward.VA); 
-    else
-        VA_string = strcat(extra_str, 'VA↑ not found.'); % OD.rightward.VA);
-    end
-    
-    a = gca;
-    a1 = a.Position;
-    k  = a1(4)/a1(3);
-    %a1(3) = 0.99*a1(3);
-    %a1(4) = 0.95*a1(4);    
-    a1(1) = a1(1)*1.05;
-    a1(2) = a1(2)*0.99;
-    
-    t = annotation('textbox','String',VA_string,'Position',a1,'Vert','top','HorizontalAlignment', 'left', 'FitBoxToText','on');    
-    t.FontSize = 14;
-    t.BackgroundColor = 'w';
-
-end
-
-
-end
-
-
-
 
 
 
@@ -536,159 +565,6 @@ end
 
 
 
-function ret_info = analyze_bidrectional_sweep (descendTbl, ascendTbl, info)
-   
-
-%% general setup  
-
-VA          = @(t, xstart, dirn, ratio) xstart+dirn*ratio*t;
-ratio       = info.logmar_step/info.win_length;
-n_points    = (info.max_logMAR - info.min_logMAR)/0.1 + 1;
-time_points = (0:(n_points+1))*info.win_length;
-
-%% read descending sweep - look for activity "drop off"
-
-lower = info.lower_threshold;
-upper = info.upper_threshold;
-
-dataTbl  = descendTbl;
-t = dataTbl.t;
-[r, q] = get_sweep_activity (dataTbl, info.win_length);
-[k, i] = find_activity (r, q, 'drop-off', 'lower_threshold', lower, 'upper_threshold', upper);
-ret_info.descending.VA = t2logMAR (t(k), -1, info);
-ret_info.descending.t  = t(k); 
-ret_info.descending.k  = k; 
-ret_info.descending.activity = [ t r q ];
-
-
-%% read ascending sweep - look for activity "pick up"
-
-dataTbl  = ascendTbl;
-t = dataTbl.t;
-[r, q] = get_sweep_activity (dataTbl, info.win_length);
-[k, i] = find_activity (r, q, 'pick-up', 'lower_threshold', lower, 'upper_threshold', upper);
-
-ret_info.ascending.VA = VA (t(k), info.min_logMAR, +1, ratio)
-ret_info.ascending.t  = t(k); 
-ret_info.ascending.k  = k; 
-ret_info.ascending.activity = [ t r q ];
-
-ret_info.meanVA = 0.5*(ret_info.ascending.VA + ret_info.descending.VA);
-
-
-
-
-end
-
-
-function show_bidirectional_sweep (descendTbl, ascendTbl, VA_ETDRS, info)
-
-if (nargin ==2)
-    limits = [ -0.2 1.0 ]
-end
-
-%% bi-directional sweep  
-
-%fs = info.FontSize; % font size
-
-%% general setup  
-
-VA          = @(t, xstart, dirn, ratio) xstart+dirn*ratio*t;
-ratio       = info.logmar_step/info.win_length;
-n_points    = (info.max_logMAR - info.min_logMAR)/0.1 + 1;
-time_points = (0:(n_points+1))*info.win_length;
-
-
-%% analyze the tables 
-
-% descendTbl  = readtable (f1);
-% ascendTbl   = readtable (f2);
-
-ret_info   = analyze_bidrectional_sweep (descendTbl, ascendTbl, info);
-
-% determine mean VA 
-fprintf ('final VA = %4.2f\n', ret_info.meanVA);
-
-subplot (2,1,1); 
-show_sweep ( descendTbl, ret_info.descending, info, -1)
-sig = findobj(gca, 'Tag', 'dataline');
-act = findobj(gca, 'Tag', 'activity');
-legend ([sig act ], { 'signal', 'activity' });
-
-
-subplot (2,1,2); 
-show_sweep ( ascendTbl, ret_info.ascending, info, +1)
-
-meanVA = sprintf('mean. VA = %4.2f logMAR', ret_info.meanVA);
-strETDRS = sprintf('VA (ETDRS) = %4.2f logMAR', VA_ETDRS);
-textbox ({ meanVA, strETDRS }, 'FontSize', info.FontSize, 'HorizontalAlignment', 'left');
-
-
-%% ADDITIONAL INFORMATION 
-% subplot (2,1,1);
-% subplot (2,1,2);
-
-
-end
-
-
-
-function show_sweep ( dataTbl, ret_info, info, dirn)
-
-
-%% general setup  
-
-VA          = @(t, xstart, dirn, ratio) xstart+dirn*ratio*t;
-ratio       = info.logmar_step/info.win_length;
-n_points    = (info.max_logMAR - info.min_logMAR)/0.1 + 1;
-time_points = (0:(n_points+1))*info.win_length;
-
-profile.mean_shift  = true;
-[y_info, H]         = show_signal (dataTbl, profile);
-ylabel ('Normalized Displacement');
-grid on;
-
-xticks(time_points);
-xlim([ min(time_points) max(time_points) ]);
-ylim([ -0.1 0.3 ]);
-set(gca, 'FontSize', info.FontSize);
-
-
-k    = ret_info.k;
-t_VA = ret_info.t;
-VA   = ret_info.VA;
-
-
-%% show a blob at point 
-
-if (~isempty(k))
-
-    scatter (t_VA,  y_info(k), 'sizeData', 100, 'MarkerFaceColor','k', 'MarkerEdgeColor','k');
-    line ([ t_VA t_VA ], [ -1 1 ], 'LineWidth', 1.5, 'Color','k');
-    h = text(t_VA, 0.25, sprintf(' VA_↓ = %4.2f logMAR', VA));
-    set(h, 'FontSize', info.FontSize);
-    fprintf ('VA (descending) = %4.2f\n', VA);
-
-end
-
-
-xaxis2logMAR (dirn, info);
-
-%% show the signal acitivity signal
-
-yyaxis right;
-t_act = ret_info.activity(:,1);
-r_act = ret_info.activity(:,2);
-h = plot(t_act, r_act, 'k--');
-set(h, 'Tag', 'activity');
-
-ylim([-1 2]);
-ylabel ('Activity');
-set(gca, 'YColor', 'k');
-
-
-end
-
 
 function xaxis2logMAR (dirn, info)
     x0 = xticks;    
@@ -722,7 +598,7 @@ end
 %           which_VA
 
 
-function paired_sweep_visualizer (pair_id, thisTbl) % , eye_code, VAinfo, which_VA)
+function paired_sweeper_visualizer (pair_id, thisTbl, trials) % , eye_code, VAinfo, which_VA)
   
 
 % figure; clf;
@@ -730,127 +606,70 @@ function paired_sweep_visualizer (pair_id, thisTbl) % , eye_code, VAinfo, which_
 %% RIGHT DOWN SWEEP 
 
 thisTbl = thisTbl(thisTbl.pair_id == pair_id, :);
-%downTbl = thisTbl(i,:);
-%downDir = sprintf ('result/okn/%s/%s/', downTbl.clip_direction{1}, downTbl.type{1});
-%d.descending.dir = fullfile(d.main_dir, eye_code, downDir);
-%okn_string = sprintf ('%s.%s', downTbl.eye{1}, downTbl.okn_direction{1});
-%okn_sweep_direction = downTbl.sweep_direction{1};
+% sigfile         = downRow.signalfile;
+% resfile         = downRow.resultcsvfile;
+% eventsfile      = downRow.eventsfile;
+% dirn            = sign(downRow.k);
+% events          = loadjson (eventsfile);
 
+%% stardard text VA options 
+opts = { 'FontSize',22, 'HorizontalAlignment', 'right' };
+
+
+%% SHOW DOWNSWEEP
 iDown = (thisTbl.k<0);
 downRow         = thisTbl(iDown,:);
-sigfile         = downRow.signalfile;
-resfile         = downRow.resultcsvfile;
-timelinefile    = downRow.timelinefile;
-dirn            = sign(downRow.k);
-timeline        = loadjson (timelinefile);
-
-VA = downRow.VA;
-t  = downRow.t;
-VA_down = VA;
-
 a(1) = subplot (2,1,1);
+down_sweeper = trials(downRow.name{1});
+xlim_data_down = show_sweeper (a(1), down_sweeper, downRow, opts{:});
 
-% show_invisible_signal_data  (sigfile, "down", "showTimePoint", t); 
-
-short_name = extractBefore(downRow.name{1},"_");
-show_invisible_sweep_data  (sigfile, short_name, timeline, dirn, "showTimePoint", t); 
-ylabel ('Displacement');   ylim([-0.1 0.25]);
-set(gca,'FontSize',22);
-
-if (isfinite(VA))
-    VA_string = sprintf ('VA↓ = %4.2f logMAR', VA); % OD.rightward.VA);
-else
-    VA_string = 'VA↓ not found.'; % OD.rightward.VA);
-end
-
-
-a1 = a(1).Position;
-k  = a1(4)/a1(3);
-a1(3) = 0.99*a1(3);
-a1(4) = 0.95*a1(4);
-
-t = annotation('textbox','String',VA_string,'Position',a1,'Vert','top','HorizontalAlignment', 'right','FitBoxToText','on');
-
-t.FontSize = 22;
-t.BackgroundColor = 'w';
-
-%% add labels 
-
-xlabel('');
-
-
-%% RIGHT UP SWEEP 
-
-
+%% SHOW UPSWEEP
 iUp = (thisTbl.k>0);
 upRow = thisTbl(iUp,:);
-sigfile = upRow.signalfile;
-resfile = upRow.resultcsvfile;
-dirn    = sign(upRow.k);
-VA = upRow.VA;
-t  = upRow.t;
-VA_up = VA;
-
-
 a(2) = subplot (2,1,2);
-
-short_name = extractBefore(upRow.name{1},"_");
-show_invisible_sweep_data  (sigfile, short_name, timeline, dirn, "showTimePoint", t); 
-set(gca,'FontSize',22); ylim([-0.1 0.25]);
-
-
-if (isfinite(VA))
-    VA_string = sprintf ('VA↑ = %4.2f logMAR', VA); % OD.rightward.VA);
-else
-    VA_string = 'VA↑ not found.'; % OD.rightward.VA);
-end
+up_sweeper = trials(upRow.name{1});
+xlim_data_up = show_sweeper (a(2), up_sweeper, upRow, opts{:});
+ylabel('');
 
 
-a1 = a(2).Position;
-k  = a1(4)/a1(3);
-a1(3) = 0.99*a1(3);
-a1(4) = 0.95*a1(4);
-
-t = annotation('textbox','String',VA_string,'Position',a1,'Vert','top','HorizontalAlignment', 'right', 'FitBoxToText','on');
-
-t.FontSize = 22;
-t.BackgroundColor = 'w';
-
-VA_mean = (VA_down + VA_up)/2;
-if (VA_mean)
-
-    %% back into the first SWEEP 
-    VA_string = sprintf ('mean VA = %4.2f logMAR', VA_mean);
-
-else
-
-    VA_string = 'Couldnt get mean VA'; % sprintf ('mean VA = %4.2f logMAR', VA_mean);
-end
-
-axes (a(1));
-
+%% SHOW VA
+VA_mean = (downRow.VA + upRow.VA)/2;
+axes(a(1));
 a1 = a(1).Position;
-k  = a1(4)/a1(3);
-a1(1) = 1.05*a1(1);
-a1(2) = 0.975*a1(2);
-
-t = annotation('textbox','String',VA_string,'Position',a1,'Vert','top','HorizontalAlignment', 'left','FitBoxToText','on');
-t.FontSize = 22;
-t.BackgroundColor = 'w';
+show_VA_label(a1, 'mean VA', VA_mean, 'FontSize',22, 'HorizontalAlignment', 'left');
 
 
-%title (sprintf('%s [%s]',eye_code, which_VA), 'Interpreter', 'none');
+%% SET X-LIMITS
+xl = min([ xlim_data_down ; xlim_data_up ]);
+axes(a(1));
+xlim(xl);
+axes(a(2));
+xlim(xl);
+
+
+%% Default positioning of the graph
 
 f = gcf;
 f.Position =  [ 4         562        1400         500 ];
 
-%% PRINT THE RESULTS 
+end
 
-%outputdir = fullfile(d.sweepfigurespath, which_VA);
-%createdirectory (outputdir);
-%savefig (fullfile(outputdir, 'sweep.fig'));
-%exportgraphics (gcf,fullfile(outputdir, 'sweep.png'));
 
+
+%% SHOW CONSENSUS 
+
+function show_consensus (consensus_info)
+    plot(consensus_info.time, consensus_info.activity, 'k-', 'LineWidth', 2);
+    ylim([-0.1 2]);
+    xlim([ 0 max(consensus_info.time)]);
+    grid on;
+    %title ('Total OKN activity');
+    xlabel ('Time (seconds)');
+    hold on;
+    box(gca,'on');
+    set(gca,'LineWidth', 1.0);
+    grid on;
+    ylabel('Consensus');
 end
 
 
@@ -867,45 +686,116 @@ end
 %           which_VA
 
 
-function [y0, t0] = single_sweep_visualizer (pair_id, sweep_dirn, thisTbl, rawTbl) % , eye_code, VAinfo, which_VA)
-  
+function xlim_data = single_sweeper_visualizer (a, pair_id, sweep_dirn, thisTbl, trials)  % , eye_code, VAinfo, which_VA)
+
 
 %% SWEEP INFORMATION 
 
 thisTbl = thisTbl(thisTbl.pair_id == pair_id, :);
-
 iSweepDirn      = (sign(thisTbl.k) == sweep_dirn);
 sweepRow        = thisTbl(iSweepDirn,:);
-sigfile         = sweepRow.signalfile;
-resfile         = sweepRow.resultcsvfile;
-timelinefile    = sweepRow.timelinefile;
-dirn            = sign(sweepRow.k);
-timeline        = loadjson (timelinefile);
-VA              = sweepRow.VA;
-t               = sweepRow.t;
 
-yyaxis right;
-a = gca; 
-short_name = extractBefore(sweepRow.name{1},"_");
-[y0, t0] = show_invisible_sweep_data  (sigfile, short_name, timeline, dirn, "showTimePoint", t, "Color", [ 0 0 0 0.4 ]); 
-show_label_VA (VA, dirn, "", "SuppressUnit", true);
-hold on;
-
+opts = { 'FontSize',16, 'HorizontalAlignment', 'right' };
+sweeper = trials(sweepRow.name{1});
+xlim_data = show_sweeper (a, sweeper, sweepRow, opts{:});
 
 %% show the activity signal 
 
-yyaxis left;
-ax = gca;
-ax.YAxis(1).Color = 'k';
-ax.YAxis(2).Color = 'k';
-
-rawTbl = rawTbl(rawTbl.pair_id == pair_id, :);
-i      = (sign(rawTbl.dirn) == sweep_dirn);
-rawTbl = rawTbl(i,:);
-plot (rawTbl.t, rawTbl.activity, 'Color', [ 0 0 0 0.2 ], 'LineWidth', 2);
-ylim ([-0.1 2])
+% yyaxis left;
+% ax = gca;
+% ax.YAxis(1).Color = 'k';
+% ax.YAxis(2).Color = 'k';
+%
+% rawTbl = rawTbl(rawTbl.pair_id == pair_id, :);
+% i      = (sign(rawTbl.dirn) == sweep_dirn);
+% rawTbl = rawTbl(i,:);
+% plot (rawTbl.t, rawTbl.activity, 'Color', [ 0 0 0 0.2 ], 'LineWidth', 2);
+% ylim ([-0.1 2])
 
 end
+
+
+%% SHOW_SWEEPER
+
+
+function xlim_data = show_sweeper (a, sweeper, row, varargin) % , eye_code, VAinfo, which_VA)
+  
+
+    %% get anlaysis information  
+    VA      = row.VA;
+    t       = row.t;
+    sigfile = row.signalfile;
+
+    
+    %% show data 
+    show_invisible_sweeper_data  (sigfile, "showTimePoint", t); 
+    xlim_data = show_sweeper_events (sweeper);
+    show_sweeper_logmar_ticks (sweeper);
+
+    ylabel ('Displacement');   ylim([-0.1 0.25]);
+    set(gca,'FontSize',22);
+
+    %% positioning for right-hand side VA 
+    a1 = a.Position;
+    k  = a1(4)/a1(3);
+    a1(3) = 0.99*a1(3);
+    a1(4) = 0.95*a1(4);      
+
+    if (sweeper.sweep_direction == -1)
+        show_VA_label (a1, 'VA↓', VA, varargin{:});
+    else
+        show_VA_label (a1, 'VA↑', VA, varargin{:});
+    end
+    
+end
+
+
+
+function show_VA_label (a, VAstr, VA, varargin)
+
+    %% add the down VA
+    if (isfinite(VA))
+        VA_string = sprintf ('%s = %4.2f logMAR', VAstr, VA); % OD.rightward.VA);
+    else
+        VA_string = sprintf('%s not found.', VAstr); % OD.rightward.VA);
+    end
+
+    
+    if (isempty(varargin))
+        t.FontSize = 22;
+        t = annotation('textbox','String',VA_string,'Position',a,'Vert','top','FitBoxToText','on', 'HorizontalAlignment', 'right');
+    else
+        
+        t = annotation('textbox','String',VA_string,'Position',a,'Vert','top','FitBoxToText','on', varargin{:});
+    end
+    t.BackgroundColor = 'w';
+
+end
+
+
+
+
+%{
+function y = get_record_timestamp (dataTbl, t)
+
+    % GET_RECORD_TIMESTAMP Get timestamp
+    %
+    %   get_record_timestamp (dataTbl, t)
+    %
+    % where 
+    %       dataTbl is the the data-table
+    %       t       is the sensor_timestamp
+
+
+     i = ismember(dataTbl.t, t);
+     if (sum(i) == length(t))
+         y = dataTbl.record_timestamp(i);
+     else
+        error ('Timestamp problem.');
+     end
+
+end
+%}
 
 
 %{

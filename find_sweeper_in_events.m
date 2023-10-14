@@ -23,18 +23,18 @@ function [main, sub_events] = find_sweeper_in_events (events, which_sweep)
     main.start = start_event;
     main.end   = end_event;
     
-    %% we only want "sweep" sub_events 
+    %% we want all sub_events 
     count = 1;    
     for k = (n1+1):(n2-1)
         this_event = events{k};
-        if  (strcmpi(this_event.event_category, "sweep"))
+        %if  (strcmpi(this_event.event_category, which_category))
             if (count == 1)
                 sub_events = this_event;
             else
                 sub_events(count) = this_event;
             end
             count=count+1;
-        end
+        %end
     end
 end
     

@@ -9,6 +9,11 @@ function [y0, t0] = show_invisible_sweep_data  (filename, which_sweep,  timeline
 %       dataTbl      is the data table 
 %       tracker_name is the Tracker Id   
 %
+% Optional:
+%
+%       offset is time where   
+%
+%
 % EXAMPLE 
 %
 %  %% Tracker names "eye_pupil_tracker_os" & "eye_pupil_tracker_od"  
@@ -38,6 +43,8 @@ p.addOptional('Color',[ 0 0 0 1 ]);
 %p.addOptional ('timeline', []);
 p.addOptional ('X', 0);
 p.addOptional ('Y', 0);
+p.addOptional ('offset', 0);
+
 p.parse(varargin{:});
 res = p.Results;
 

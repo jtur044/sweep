@@ -1,0 +1,45 @@
+function show_sweeper_logmar_ticks (sweeper, varargin)
+
+% SHOW_SWEEPER_LOGMAR_TICKS Show event points 
+%
+% function show_sweeper_logmar_ticks (sub_events, varargin)
+%
+% where 
+%       events are sweep ONLY events
+%
+
+p = inputParser ();
+p.addOptional ('which_timestamp',  'sensor_timestamp');
+p.addOptional ('offset_timestamp', 0);
+p.parse (varargin{:});
+res = p.Results;
+
+
+sweeper.sweep_event.start
+
+
+%% extract ONLY "sweep" sub_event timestamps 
+
+offset_timestamp = 0;
+count = 1;
+for k = 1:length (sweeper.sub_events)
+        this_sub_event = sweeper.sub_events(k);
+        if (strcmpi(this_sub_event.type, 'event_marker'))
+            if (strcmpi(this_sub_event.event_category, 'sweep'))
+
+                if (this_sub_event.sweep_counter == 0)
+                    offset_timestamp = this_sub_event.(res.which_timestamp);
+                end
+
+                xlabels{count} = this_sub_event.logmar_level;
+                xdata(count)  = this_sub_event.(res.which_timestamp) - offset_timestamp;        
+                count = count + 1;
+            end
+        end
+
+end
+
+xticks (xdata);
+xticklabels (xlabels);
+
+end

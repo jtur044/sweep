@@ -10,7 +10,8 @@
 
 % SWEEPER PROTOCOL 
 
-main_dir = './DATA/10Oct2023';   %% Example DIR 
+main_dir = './DATA/14Oct2023';   %% Example DIR [HAS A PROTOCOL ERRORS]
+%main_dir = './DATA/10Oct2023';   %% Example DIR [HAS A PROTOCOL ERRORS]
 
 
 % "SWEEP"
