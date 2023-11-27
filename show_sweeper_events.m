@@ -42,5 +42,5 @@ r = bbox2points ([ xdata(end) -10 w 20 ]);
 patch(r(:,1), r(:,2), 'b', 'faceAlpha',0.1);
 
 xlim_data = [ 0 xdata(end)+w ];
-
+hold on;
 return

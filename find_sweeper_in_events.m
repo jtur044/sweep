@@ -23,10 +23,17 @@ function [main, sub_events] = find_sweeper_in_events (events, which_sweep)
     main.start = start_event;
     main.end   = end_event;
     
-    %% we want all sub_events 
+    %% we want all sub_events (event_marker)
     count = 1;    
     for k = (n1+1):(n2-1)
         this_event = events{k};
+
+        if (~strcmpi(this_event.type, 'event_marker'))
+            continue;
+        end
+
+        %% only want extneded events I think
+
         %if  (strcmpi(this_event.event_category, which_category))
             if (count == 1)
                 sub_events = this_event;

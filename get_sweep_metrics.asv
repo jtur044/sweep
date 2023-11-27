@@ -250,13 +250,8 @@ i = logical(summary.is_valid);
 chains_id = summary.chain_id(i);
 
 
-%% list VALID chain ids in the SWEEP 
+%% list VALID chain ids 
 dataTbl.is_valid = ismember(dataTbl.chain_id, chains_id);
-
-g_is_valid = dataTbl.is_valid;
-g_is_sp    = cellfun (@(x) strcmpi(x,'true'), dataTbl.is_sp);
-g_is_qp    = cellfun (@(x) strcmpi(x,'true'), dataTbl.is_qp); 
-g_is_okn   = ( g_is_sp | g_is_qp ) & (g_is_valid);
 
 global_is_okn = dataTbl.t;
 
@@ -266,16 +261,14 @@ for k = 1:M
     %% get the contents of the WINDOW (start_time, end_time)    
     start_time = dataTbl.t(k);
     end_time   = min( [ start_time+window_length, total_time ]);
-    i          = ((start_time <= dataTbl.t) & (dataTbl.t <= end_time));    
+    i = ((start_time <= dataTbl.t) & (dataTbl.t <= end_time));    
     
-    %% local information 
-    thisTbl  = dataTbl(i,:);      
-    is_sp    = g_is_sp(i);      % cellfun (@(x) strcmpi(x,'true'), thisTbl.is_sp);
-    is_qp    = g_is_qp(i);      % cellfun (@(x) strcmpi(x,'true'), thisTbl.is_qp); 
-    is_valid = g_is_valid(i);   % thisTbl.is_valid; 
-    is_okn   = g_is_okn(i);     % ( is_sp | is_qp ) & (is_valid);
+    thisTbl = dataTbl(i,:);      
+    is_sp    = cellfun (@(x) strcmpi(x,'true'), thisTbl.is_sp);
+    is_qp    = cellfun (@(x) strcmpi(x,'true'), thisTbl.is_qp); 
+    is_valid = thisTbl.is_valid; 
+    is_okn   = ( is_sp | is_qp ) & (is_valid);
 
-    %% chain IDs 
     CL_ids = unique(thisTbl.result_id (is_okn));
     if (any(CL_ids==-1))
         error ('This shouldnt be possible');
@@ -293,15 +286,17 @@ for k = 1:M
         info.dropoff_n = find(is_okn, 1, 'last');
         info.dropoff_t = thisTbl.t(info.dropoff_n);
 
-        %% revised estimate 
+        % revised estimate 
         i = dataTbl.t == info.dropoff_t;            
         if (any(i))
            new_chain_id = dataTbl.result_chain_id(i);
            n = find(dataTbl.result_chain_id == new_chain_id, 1, 'last');                                
            info.dropoff_n = n;
            info.dropff_t = dataTbl.t(n);
-        end
-        
+         end
+
+ 
+
         %% ... and find lowest onset
         if (~info.found_onset)
             onset_n = find(is_okn, 1, 'first');
@@ -336,16 +331,9 @@ for k = 1:M
 end
 
 
-%% we should zero any points that dont have OKN signalled 
+%% we should zero any points that dont  
 
-%% NAMED CHAINS 
 
-r                 = (y & (g_is_okn)); 
-valid_chain_id    = unique(dataTbl.chain_id (r));
-valid_data_points = ismember(dataTbl.chain_id, valid_chain_id) & (g_is_sp | g_is_qp );
-
-r       = r | valid_data_points;
-
-info.separated_activity = [ t r ];
+info.separated_activity = [ t y ];
 
 end

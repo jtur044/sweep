@@ -1,16 +1,14 @@
-function finalTbl = run_sweep_invisible_analysis  (sweep_dir)
+function finalTbl = run_sweep_invisible_reporter  (sweep_dir)
 
-% RUN_SWEEP_INVISIBLE_ANALYSIS 
+% RUN_SWEEP_INVISIBLE_REPORTER
 %
-% run_sweep_invisible_analysis  (sweep_dir)
+% run_sweep_invisible_reporter  (sweep_dir)
 %
 % where 
 %       sweep_dir is the sweep directory (invisible)   
 %
 
-if (nargin ==0)
-    sweep_dir = './DATA/Aug2/cfra_02_08_2023_sweep_left';
-end
+
 
 %% Informational 
 
@@ -25,12 +23,42 @@ d.sweepVAdir        = fullfile(sweep_dir, 'results');
 d.figuresdir        = fullfile(sweep_dir, 'results', 'figures');
 createdirectory (d.figuresdir);
 
+d.include           = fullfile(d.sweepVAdir, 'sweepVA.csv');   
 
-createdirectory (d.sweepVAdir);
-createdirectory (d.consensusVAdir);
+%% we want to generate the following 
 
-d.sweepVAfile       = fullfile(d.sweepVAdir, 'sweepVA.csv');
+% Given people 
+%
+% 1. EVA 
+% 2. mean descending sweep VA 
+% 3. mean ascending sweep VA 
+% 4. mean all sweep VA
+% 5. mean descending consensus VA 
+% 6. mean ascending consensus VA 
+% 7. mean consensuses VA 
+
+d.sweepVAfile       = fullfile(d.sweepVAdir, 'sweepVA.csv');   %% PAIRED VA 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%   summary.json 
+%
+%	2. "droffmean_descending_VA": 0.01859720945,
+%	3. "mean_ascending_VA": 0.1015186715,
+%	4. "mean_mean_VA": 0.06005794048,
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 d.sweepsummaryfile  = fullfile(d.sweepVAdir, 'summary.json');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%   simple_consensus_VA.json
+%
+%	7. "meanVA": 0.07459815264,
+%	5. "dropoff_VA": 0,
+%	6. "onset_VA": 0.1491963053
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 
 protocol = easy_sweep_protocol (d.protocol_file);
 trial_keys = protocol.sweep.keys();
@@ -98,7 +126,6 @@ for m = 1:length (trial_keys)
     output(m).signalfile     = signalfile;
     output(m).resultcsvfile  = resultfile;
     output(m).timelinefile   = string(d.timeline_file);
-    output(m).bounded        = true;
     
 
     %% separated activity 
@@ -109,27 +136,13 @@ for m = 1:length (trial_keys)
     switch (sign(k))
 
         case { -1 }
-
-                if (~info.found_activity)
-
-                    output(m).VA = this_sweep_info.max_logMAR + 0.1;
-                    output(m).t  = info.dropoff_t;
-                    output(m).bounded        = false;
-                else 
-                    output(m).VA = this_sweep_info.max_logMAR + 0.1 + k*info.dropoff_t;
-                    output(m).t  = info.dropoff_t;
-                end
-
+                output(m).VA = this_sweep_info.max_logMAR + 0.1 + k*info.dropoff_t;
+                output(m).t  = info.dropoff_t;
+    
         case { +1 }
-
-                if (~info.found_activity)
-                    output(m).VA = this_sweep_info.max_logMAR + 0.1;
-                    output(m).t  = info.onset_t;
-                    output(m).bounded        = false;
-                else
-                    output(m).VA = this_sweep_info.min_logMAR + k*info.onset_t;
-                    output(m).t  = info.onset_t;
-                end
+                
+                output(m).VA = this_sweep_info.min_logMAR + k*info.onset_t;
+                output(m).t  = info.onset_t;
 
         otherwise 
             error ('No signed ratio set');
@@ -776,7 +789,7 @@ t.FontSize = 22;
 t.BackgroundColor = 'w';
 
 VA_mean = (VA_down + VA_up)/2;
-if (~isnan(VA_mean))
+if (VA_mean)
 
     %% back into the first SWEEP 
     VA_string = sprintf ('mean VA = %4.2f logMAR', VA_mean);

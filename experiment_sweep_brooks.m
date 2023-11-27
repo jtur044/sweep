@@ -6,8 +6,8 @@
 %main_dir = "/Volumes/BACKUP/DATA/BROOKS.WORKING/TEST2";
 %main_dir = "/Volumes/BACKUP/DATA/BROOKS.WORKING/TEST3";
 %main_dir = "/Volumes/BACKUP/DATA/BROOKS.WORKING/TEST4";
-main_dir = "/Volumes/Bn337104/DATA/BROOKS.WORKING/TEST4";
-
+%main_dir = "/Volumes/Bn337104/DATA/BROOKS.WORKING/TEST4";
+main_dir = "/Volumes/BACKUP/DATA/BROOKS.WORKING/TEST5";
 
 % STEP 1 - run OpenFace
 
@@ -19,7 +19,7 @@ main_dir = "/Volumes/Bn337104/DATA/BROOKS.WORKING/TEST4";
 
 % STEP 3 - run Updater 
 
-% batch_sweep_webcam_processor (main_dir, "Updater", "dryrun", false);
+batch_sweep_webcam_processor (main_dir, "Updater", "dryrun", false);
 
 % STEP 4 - run Okndetector 
 

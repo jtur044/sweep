@@ -1,8 +1,8 @@
-function finalTbl = run_sweeper_invisible_analysis  (sweep_dir)
+function finalTbl = run_sweeper_invisible_show_analysis  (sweep_dir)
 
-% RUN_SWEEP_INVISIBLE_ANALYSIS 
+% RUN_SWEEPER_INVISIBLE_SHOW_ANALYSIS 
 %
-% run_sweep_invisible_analysis  (sweep_dir)
+% run_sweeper_invisible_show_analysis  (sweep_dir)
 %
 % where 
 %       sweep_dir is the sweep directory (invisible)   
@@ -35,8 +35,14 @@ d.sweepsummaryfile  = fullfile(d.sweepVAdir, 'summary.json');
 
 protocol            = easy_sweeper_protocol (d.protocol_file);
 sweep_parms         = protocol.sweep_set.x0x5F_parameters;
-events              = load_commented_json (d.events_file);
 
+if (~exist(d.events_file,'file'))
+    strf = sprintf('oknevents -i "%s/gaze.csv" > %s', sweep_dir, d.events_file);
+    system(strf);
+    events              = load_commented_json (d.events_file);
+else
+    events              = load_commented_json (d.events_file);
+end
 
 %% Generate a "trials" object (contains information for each sweep)
 
@@ -103,6 +109,8 @@ trial_keys  = trials.keys();
 
 M = length (trial_keys);
 
+isfirst = true;
+
 for m = 1:M     %% cycle through keys
 
     %textprogressbar (m/M*100);
@@ -134,6 +142,11 @@ for m = 1:M     %% cycle through keys
 
 
     %% analyze the data  
+    %
+    % note: this will read the SIGNALFILE and therefore the timebase 
+    % is signal file based.
+    %
+
 
     info = get_sweep_metrics (sigTbl, resultTbl); 
 
@@ -150,77 +163,66 @@ for m = 1:M     %% cycle through keys
 
     %% add the start time 
     this_sweep_trial     = trials(each_trial_key);
+    
+    %% use the first trial as the consensus trial 
+    if (isfirst)
+        consensus_sweeper = this_sweep_trial;
+        isfirst = false;
+    end
+
+    %% start-time and end-time are calculated based on sensor_timestamp 
+        
+    output(m).trial      = this_sweep_trial;
     start_time           = this_sweep_trial.start_time;
     output(m).start_time = start_time;                  %% start-time using sensor_timestamp 
     end_time             = this_sweep_trial.end_time;
-    output(m).start_time = end_time;                    %% end-time using sensor_timestamp 
+    output(m).end_time = end_time;                    %% end-time using sensor_timestamp 
 
     % entry_event_record_timestamp = get_record_timestamp (sigTbl, this_sweep_trial.start_event.sensor_timestamp);
     % sweep_event_record_timestamp = get_record_timestamp (sigTbl, this_sweep_trial.sweep_event.start.sensor_timestamp);
     
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % PER sweep-VA
+    %
+    % Note that info is determined from SIGNALFILE time  
+    % 
+    % (start_time, end_time) are offsets into the SIGNALFILE  
+    %
+    %  VA will be bounded by (start_time, end_time) offsets 
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    %% add the estimated per sweep-VA
-    switch (sign(this_sweep_trial.sweep_direction))
+    bounded_VA          = get_bounded_VA (this_sweep_trial, info, start_time, end_time);
+    output(m).VA        = bounded_VA.VA;
+    output(m).t         = bounded_VA.t;    
+    output(m).bounded   = bounded_VA.bounded;
 
-        case { -1 }
-
-                if (info.dropoff_t <= start_time)   % dropoff before start               
-                    output(m).VA       = this_sweep_trial.logMAR.max + 0.1;
-                    output(m).t        = start_time;
-                    output(m).bounded  = false;
-
-                elseif (info.dropoff_t >= end_time) % dropoff after start 
-
-                    output(m).VA       = this_sweep_trial.logMAR.min;
-                    output(m).t        = end_time;
-                    output(m).bounded  = false;
-
-                else                                % dropoff in-between
-
-                    output(m).VA = this_sweep_trial.logMAR.max + 0.1 + this_sweep_trial.ratio*(info.dropoff_t - start_time);
-                    output(m).t  = info.dropoff_t;
-                    output(m).bounded  = true;
-                end
-
-
-        case { +1 }
-
-                
-                if (info.onset_t <= start_time)   % onset before start               
-                    
-                    output(m).VA       = this_sweep_trial.logMAR.min;
-                    output(m).t        = start_time;
-                    output(m).bounded  = false;
-
-                elseif (info.onset_t >= end_time) % dropoff after start 
-
-                    output(m).VA       = this_sweep_trial.logMAR.max + 0.1;
-                    output(m).t        = end_time;
-                    output(m).bounded  = false;
-
-                else                                % dropoff in-between
-
-                    output(m).VA = this_sweep_trial.logMAR.min + this_sweep_trial.ratio*(info.onset_t - start_time);
-                    output(m).t  = info.dropoff_t;
-                    output(m).bounded  = true;
-                end
-
-              
-     
-
-
-        otherwise 
-            error ('No signed ratio set');
-    end
 
     %% activity matrix for CONSENSUS method  
+    %
+    %   pair_id is the name of the PAIR 
+    %   id      is the indiivudal name of the SWEEP 
+    %
+    
     L = size(info.sp.separated_activity, 1);
     activity = [  activity ; output(m).pair_id*ones(L,1) output(m).id*ones(L,1)  output(m).k*ones(L,1) info.sp.separated_activity info.ep.chain_activity ];
+    
+    % analyze the activity 
+    output(m).activity.sp = info.sp.separated_activity;
+    output(m).activity.ep = info.ep.chain_activity;
+
+
+
+
+    % csHeader = [ output(m).pair_id output(m).id  output(m).k ];
+    % csDecider.add (csHeader, info.sp.separated_activity | info.ep.chain_activity)
+
 
 
     %% save these VA to an output file 
     fprintf ('"%s" k = %4.2f, t=%4.2f, st = %4.2f, VA = %4.2f\n', each_trial_key, output(m).k, output(m).t,  start_time, output(m).VA);
-    %info
+    
 end
 
 %textprogressbar ('done.');
@@ -238,31 +240,41 @@ writetable(outTbl, d.outputVAfile);
 %   logMAR.max, logMAR.min, logMAR.step
 %
 
-%% there  shoud 
+%% calculating CONSENSUS VA
+%
+% Note that times t are in SIGNALFILE times  
+% VA are relative to start_time i.e., sensor_timestamp 
+%
+% VA are also bounded 
+%
+
+fprintf ('Calculating CONSENSUS VA.\n');
+
 va_info.logMAR.max = 1.0;
 va_info.logMAR.min = 0.0;
 va_info.ratio      = 0.05;
 
-activity = array2table (activity, "VariableNames", { 'pair_id','id', 'dirn', 't1', 'sp1', 't2', 'ep1' } );
-consensus_info  = get_consensus_VA (activity, va_info);
+% activity = array2table (activity, "VariableNames", { 'pair_id','id', 'dirn', 't1', 'sp1', 't2', 'ep1' } );
+% consensus_info    = get_consensus_VA (activity, va_info);
 
+%% consensus entire input 
+consensus_info    = get_output_consensus_VA (output, va_info);
 simple.meanVA     = consensus_info.meanVA;
-simple.dropoff_t  = consensus_info.down.t;
-simple.dropoff_VA = consensus_info.down.VA;
+simple.dropoff_t  = consensus_info.dwn.t;   
+simple.dropoff_VA = consensus_info.dwn.VA;
 simple.onset_t    = consensus_info.up.t;
 simple.onset_VA   = consensus_info.up.VA;
 
-
 file1 = fullfile(d.consensusVAdir, 'simple_consensus_VA.json');
 file2 = fullfile(d.consensusVAdir, 'simple_consensus_mat.mat');
-file3 = fullfile(d.consensusVAdir, 'activity.csv');
+%file3 = fullfile(d.consensusVAdir, 'activity.csv');
 
 fprintf ('writing ... %s\n', file1);
 fprintf ('writing ... %s\n', file2);
 %fprintf ('writing ... %s\n', file3);
 savejson ([], simple, file1);
 save(file2, 'consensus_info');
-writetable(activity, file3);
+%writetable(activity, file3);
 
 
 %% we can compute "paired VA" as well 
@@ -443,12 +455,12 @@ figure (2);  %% down
 
 %% Label the TOP line 
 subplot (K+1,1,1); 
-xlabel ('logMAR');
+xlabel ('VA (logMAR)');
 
 %% Add CONSENSUS graph
 h = subplot (K+1,1,K+1);        
-show_consensus (consensus_info.down);
-
+xlim_data = show_sweeper_events (consensus_sweeper);
+show_consensus (h, 'consensus VA↓', consensus_info.dwn);
 
 %% SET X-LIMITS
 xl = min(xlim_down);
@@ -476,8 +488,8 @@ subplot (K+1,1,1);
 xlabel ('logMAR');
 
 h = subplot (K+1,1,K+1);  
-show_consensus (consensus_info.up);
-
+xlim_data = show_sweeper_events (consensus_sweeper);
+show_consensus (h, 'consensus VA↑', consensus_info.up);
 
 %% show consensus information 
 %hold on;
@@ -495,7 +507,7 @@ show_consensus (consensus_info.up);
 
 %% SET X-LIMITS
 xl = min(xlim_up);
-xlim(a_up,xl);
+xlim([ a_up h ],xl);
 set(a_down,'FontSize', 16);    
 
 %box(gca,'on');
@@ -658,10 +670,14 @@ end
 
 %% SHOW CONSENSUS 
 
-function show_consensus (consensus_info)
-    plot(consensus_info.time, consensus_info.activity, 'k-', 'LineWidth', 2);
+function show_consensus (a, strp, consensus_info)
+
+    t = consensus_info.activity(:,1);
+    y = consensus_info.activity(:,2);    
+    plot(t, y, 'k-', 'LineWidth', 2);
     ylim([-0.1 2]);
-    xlim([ 0 max(consensus_info.time)]);
+    
+    % xlim([ 0 max(tconsensus_info.time)]);
     grid on;
     %title ('Total OKN activity');
     xlabel ('Time (seconds)');
@@ -670,6 +686,18 @@ function show_consensus (consensus_info)
     set(gca,'LineWidth', 1.0);
     grid on;
     ylabel('Consensus');
+
+
+    %% stardard text VA options 
+    opts = { 'FontSize',16, 'HorizontalAlignment', 'right' };
+
+    a1 = a(1).Position;
+    show_VA_label(a1, strp, consensus_info.VA, opts{:});
+
+    t0 = consensus_info.t;
+    line ([t0 t0], [-10 10], 'LineStyle', '--', 'Color', 'red');
+    
+    hold on;
 end
 
 
@@ -772,6 +800,59 @@ function show_VA_label (a, VAstr, VA, varargin)
 
 end
 
+
+
+function ret = get_bounded_VA (this_sweep_trial, info, start_time, end_time)
+
+    switch (sign(this_sweep_trial.sweep_direction))
+
+        case { -1 }  % downward sweep
+
+                if (info.dropoff_t <= start_time)   % dropoff before start               
+                    ret.VA       = this_sweep_trial.logMAR.max + 0.1;
+                    ret.t        = start_time;
+                    ret.bounded  = false;
+
+                elseif (info.dropoff_t >= end_time) % dropoff after start 
+
+                    ret.VA       = this_sweep_trial.logMAR.min;
+                    ret.t        = end_time;
+                    ret.bounded  = false;
+
+                else                                % dropoff in-between
+
+                    ret.VA = this_sweep_trial.logMAR.max + 0.1 + this_sweep_trial.ratio*(info.dropoff_t - start_time);
+                    ret.t  = info.dropoff_t;
+                    ret.bounded  = true;
+                end
+
+        case { +1 }  % upward sweep
+
+                
+                if (info.onset_t <= start_time)   % onset before start                                   
+                    ret.VA       = this_sweep_trial.logMAR.min;
+                    ret.t        = start_time;
+                    ret.bounded  = false;
+
+                elseif (info.onset_t >= end_time) % onset after start 
+                    
+                    ret.VA       = this_sweep_trial.logMAR.max + 0.1;
+                    ret.t        = end_time;
+                    ret.bounded  = false;
+
+                else  
+
+                    % onset in-between
+                    ret.VA = this_sweep_trial.logMAR.min + this_sweep_trial.ratio*(info.onset_t - start_time);
+                    ret.t  = info.onset_t;
+                    ret.bounded  = true;
+                end
+              
+        otherwise 
+            error ('No signed ratio set');
+    end
+
+    end
 
 
 

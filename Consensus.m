@@ -1,3 +1,58 @@
+classdef Consensus < handle
+    %CONSENSUS This class will generate a consensus location
+    %   Detailed explanation goes here
+    
+    properties
+        Property1
+
+        count = 1;
+        this_data;
+    end
+
+    methods
+        function obj = Consensus()
+            
+            % CONSENSUS Construct an instance of this class
+            %   Detailed explanation goes here
+
+        end
+
+
+
+        function outputArg = run()
+
+            % RUN consensus generation 
+
+        end
+
+
+
+        function outputArg = add(obj, header, data)
+
+            % ADD Add signal information            
+            %   Detailed explanation goes here
+
+            obj.count = obj.count + 1;
+
+            
+            if (obj.first)
+                obj.this_data.header    = header;
+                obj.this_data.raw_data  = data;
+            else
+                obj.this_data(obj.count).header    = header;
+                obj.this_data(obj.count).raw_data  = data;
+            end
+
+        end
+
+
+
+    end
+end
+
+
+
+
 function info  = get_consensus_VA (activity, VAinfo)
 
 % GET_CONSENSUS_VA  Return the CONSENSUS VA
@@ -19,8 +74,6 @@ if (isfield(VAinfo, 'logMAR'))
     VAinfo.ratio      = VAinfo.ratio;       % *VAinfo.sweep_direction;
 end
 
-
-%disp ('help');
 
 % (pair_id, id, direction) get the largest time 
 groups = unique(activity (:,["pair_id","id","dirn"]));
