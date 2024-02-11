@@ -16,7 +16,7 @@ close all;
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-main_dir = './DATA/27Nov2023';   
+% main_dir = './DATA/27Nov2023';   
 % main_dir = './DATA/24Nov2023';   
 % main_dir = './DATA/23Nov2023';   
 % main_dir = './DATA/13Nov2023';   
@@ -25,7 +25,7 @@ main_dir = './DATA/27Nov2023';
 %main_dir = './DATA/6Nov2023';   
 
 %main_dir = './DATA/7Nov2023';  %% Example DIR [HAS A PROTOCOL ERRORS]
-%main_dir = './DATA/3Nov2023';  %% Example DIR [HAS A PROTOCOL ERRORS]
+main_dir = './DATA/3Nov2023';  %% Example DIR [HAS A PROTOCOL ERRORS]
 %main_dir = './DATA/2Nov2023';   %% Example DIR [HAS A PROTOCOL ERRORS]
 
 %main_dir = './DATA/26Oct2023';  %% Example DIR [HAS A PROTOCOL ERRORS]

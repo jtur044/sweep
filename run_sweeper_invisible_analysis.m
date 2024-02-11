@@ -215,14 +215,12 @@ for m = 1:M     %% cycle through keys
     activity = [  activity ; output(m).pair_id*ones(L,1) output(m).id*ones(L,1)  output(m).k*ones(L,1) info.sp.separated_activity info.ep.chain_activity ];
     
     % analyze the activity 
-    output(m).activity.sp = info.sp.separated_activity;
-    output(m).activity.ep = info.ep.chain_activity;
+    output(m).activity.sp    = info.sp.separated_activity;
+    output(m).activity.ep    = info.ep.chain_activity;
+    output(m).activity.total = info.total;
+    output(m).activity.break = info.break;
 
 
-
-
-    % csHeader = [ output(m).pair_id output(m).id  output(m).k ];
-    % csDecider.add (csHeader, info.sp.separated_activity | info.ep.chain_activity)
 
 
 
@@ -313,7 +311,6 @@ for k = 1:K
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-%{
     figure (1); clf;
     paired_sweeper_visualizer (overall.pair_id(k), outTbl, trials);
 
@@ -331,7 +328,6 @@ for k = 1:K
 
     savefig (figfile);
     exportgraphics (gcf,pngfile);
-%}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -641,6 +637,7 @@ thisTbl = thisTbl(thisTbl.pair_id == pair_id, :);
 %% stardard text VA options 
 opts = { 'FontSize',22, 'HorizontalAlignment', 'right' };
 
+showActivity = true;
 
 %% SHOW DOWNSWEEP
 iDown = (thisTbl.k<0);
@@ -649,20 +646,25 @@ a(1) = subplot (2,1,1);
 down_sweeper = trials(downRow.name{1});
 xlim_data_down = show_sweeper (a(1), down_sweeper, downRow, opts{:});
 
+show_activity (a(1), downRow);
+
 %% SHOW UPSWEEP
 iUp = (thisTbl.k>0);
 upRow = thisTbl(iUp,:);
 a(2) = subplot (2,1,2);
 up_sweeper = trials(upRow.name{1});
 xlim_data_up = show_sweeper (a(2), up_sweeper, upRow, opts{:});
+show_activity (a(2), upRow);
+
+
 ylabel('');
 
 
 %% SHOW VA
-VA_mean = (downRow.VA + upRow.VA)/2;
-axes(a(1));
-a1 = a(1).Position;
-show_VA_label(a1, 'mean VA', VA_mean, 'FontSize',22, 'HorizontalAlignment', 'left');
+%VA_mean = (downRow.VA + upRow.VA)/2;
+%axes(a(1));
+%a1 = a(1).Position;
+%show_VA_label(a1, 'mean VA', VA_mean, 'FontSize',22, 'HorizontalAlignment', 'left');
 
 
 %% SET X-LIMITS
@@ -680,7 +682,44 @@ f.Position =  [ 4         562        1400         500 ];
 
 end
 
+function show_activity (a, sweepRow)
 
+% %% show the activity signal 
+%
+% yyaxis right;
+% t  = sweepRow.activity.total(:,1);
+% act = sweepRow.activity.total(:,2);
+% brk = sweepRow.activity.break(:,2);
+% %ep = sweepRow.activity.ep(:,2);
+% plot (t, act);
+% ylim([-0.1 4.0]);
+% hold on;
+% plot (t, brk, 'r-');
+
+
+color = 'g';
+
+t  = sweepRow.activity.total(:,1);
+
+regions= bwconncomp(sweepRow.activity.total(:,2));
+if (regions.NumObjects > 0)
+
+    M = length(regions.PixelIdxList);
+      
+    for k = 1:M
+        
+        each     = regions.PixelIdxList{k};
+        start_of = t(each(1));
+        end_of   = t(each(end));
+
+        XY = bbox2points ([ start_of -0.1 end_of-start_of 0.025 ]);
+        patch('XData',XY(:,1),'YData',XY(:,2), 'EdgeColor', 'none', 'FaceColor', [0.8500, 0.3250, 0.0980], 'FaceAlpha', 0.5);
+    
+    end
+
+end
+
+end
 
 %% SHOW CONSENSUS 
 
@@ -737,30 +776,21 @@ thisTbl = thisTbl(thisTbl.pair_id == pair_id, :);
 iSweepDirn      = (sign(thisTbl.k) == sweep_dirn);
 sweepRow        = thisTbl(iSweepDirn,:);
 
-opts = { 'FontSize',16, 'HorizontalAlignment', 'right' };
-sweeper = trials(sweepRow.name{1});
+opts      = { 'FontSize',16, 'HorizontalAlignment', 'right' };
+sweeper   = trials(sweepRow.name{1});
 xlim_data = show_sweeper (a, sweeper, sweepRow, opts{:});
 
-%% show the activity signal 
-
-yyaxis right;
-
-t  = sweepRow.activity.sp(:,1);
-sp = sweepRow.activity.sp(:,2);
-ep = sweepRow.activity.ep(:,2);
-plot (t, sp|ep);
-ylim([-0.1 4.0]);
-
-
-% ax = gca;
-% ax.YAxis(1).Color = 'k';
-% ax.YAxis(2).Color = 'k';
+% %% show the activity signal 
 %
-% rawTbl = rawTbl(rawTbl.pair_id == pair_id, :);
-% i      = (sign(rawTbl.dirn) == sweep_dirn);
-% rawTbl = rawTbl(i,:);
-% plot (rawTbl.t, rawTbl.activity, 'Color', [ 0 0 0 0.2 ], 'LineWidth', 2);
-% ylim ([-0.1 2])
+% yyaxis right;
+% t  = sweepRow.activity.total(:,1);
+% act = sweepRow.activity.total(:,2);
+% brk = sweepRow.activity.break(:,2);
+% %ep = sweepRow.activity.ep(:,2);
+% plot (t, act);
+% ylim([-0.1 4.0]);
+% hold on;
+% plot (t, brk, 'r-');
 
 end
 
@@ -770,7 +800,7 @@ end
 
 function xlim_data = show_sweeper (a, sweeper, row, varargin) % , eye_code, VAinfo, which_VA)
   
-
+    
     %% get anlaysis information  
     VA      = row.VA;
     t       = row.t;

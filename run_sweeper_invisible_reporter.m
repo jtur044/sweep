@@ -8,7 +8,9 @@
 %       participant_file  is the participant file (invisible)   
 %
 % opts 
-%       data_directory    is the main directory for ['./DATA']
+%       data_directory    set the main data directory ['./DATA']
+%       generator         true | false  for manual or automated 
+%       manual            true | false  for manual or automated 
 %
 % EXAMPLE  
 %
@@ -25,6 +27,8 @@ p = inputParser ();
 p.addOptional ('data_directory', './DATA');
 p.addOptional ('is_generator', false);
 p.addOptional ('ignorefile', []);
+p.addOptional ('manual', false);
+
 p.parse (varargin{:});
 res = p.Results;
 
@@ -33,18 +37,17 @@ res = p.Results;
 
 inputTbl    = readtable(participant_file);
 
-
 fprintf ('looking for ignore file ...');
 
 if (isempty(res.ignorefile))
-   [mypath, mybase, myext] = fileparts (participant_file);
-   participant_ignore_file = fullerfile(mypath,strcat(mybase, '.ignore', myext));  
+    [mypath, mybase, myext] = fileparts (participant_file);
+    participant_ignore_file = fullerfile(mypath,strcat(mybase, '.ignore', myext));  
 else
-   participant_ignore_file = res.ignorefile;
+    participant_ignore_file = res.ignorefile;
 end
 fprintf ('%s\n', participant_ignore_file);
 
-if (exist(participant_ignore_file, 'file'))
+if  (exist(participant_ignore_file, 'file'))
     exclTbl     = readtable(participant_ignore_file);
     fprintf ('found.\n');
 else
@@ -56,39 +59,48 @@ end
 %% run the generator if needed  
 
 [pathname,basename,~] = fileparts (participant_file);    
-outputDir  = fullerfile (pathname, basename);
-outputFile = fullerfile (outputDir, 'experiment_main_data.csv');
-summaryFile  = fullerfile (outputDir, 'experiment_summary_data.json');
+outputDir    = fullerfile (pathname, basename);
+
+if (~res.manual)
+
+    fprintf ('Experiment main data reporting.\n');
+
+    outputFile   = fullerfile (outputDir, 'experiment_main_data.csv');
+    suffix       = 'Automated';
+else
+    
+    fprintf ('Manual data reporting.\n');
+
+    outputFile   = fullerfile (outputDir, 'experiment_manual_data.csv');
+    suffix       = 'Manual';
+end
 
 if (res.is_generator)
 
-    %% export generated data 
-    
+    % EXPORT GENERATED DATA  
+    %
+    % This should be used for automatically  
+    %
+    %   saves an experiment file 
+    %   saves a summary file 
+    %
+
     g = run_generator (res, inputTbl, exclTbl);
     createdirectory (outputDir);
     writetable (g, outputFile);
-    
-    summary.mean_diff_VA_descending      = mean(g.mean_VA_descending - g.EVA, 'omitnan');
-    summary.mean_diff_VA_ascending       = mean(g.mean_VA_ascending- g.EVA, 'omitnan');
-    summary.mean_diff_VA                 = mean(g.mean_VA - g.EVA, 'omitnan');
-    
-    summary.consensus_diff_VA_descending = mean(g.consensus_VA_descending - g.EVA, 'omitnan');
-    summary.consensus_diff_VA_ascending  = mean(g.consensus_VA_ascending - g.EVA, 'omitnan');
-    summary.consensus_diff_mean_VA       = mean(g.consensus_VA - g.EVA, 'omitnan');
-    
-    %% save summary experiment main data 
-    
-    savejson ([], summary, summaryFile);
-    fprintf ('wrote ... %s\n', summaryFile);
-
+    fprintf ('generated ... %s\n', outputFile);
+        
 else 
 
+    % READ IT NOW 
+
     g = readtable (outputFile);
-    l = load_commented_json (summaryFile);
+    fprintf ('loaded ... %s\n', outputFile);
+    
 end
 
 
-%% report formatted data 
+% REPORT FORMATTED DATA 
 %
 %  id, show, od_EVA, od_SWEEP, od_SWEEP_std,  os_EVA, os_SWEEP, os_SWEEP_std  
 %
@@ -97,10 +109,10 @@ end
 
 i_Rx    = (g.Group == 0);
 i_noRx  = (g.Group == 1);
-
 Rx      = g(i_Rx,:);
 
 % round everything to 2-dp for presentation 
+
 Rx.EVA      = round(Rx.EVA, 2);
 Rx.mean_VA  = round(Rx.mean_VA, 2);
 
@@ -130,10 +142,10 @@ output.data     = table2struct (tblRx);
 groupFilter = ((g.Group == 0) & logical(g.Analyze));
 h = g(groupFilter,:);
 fprintf ('VA deficit (OKN). (n = %d)\n', size(h,1));
-fprintf ('mean_VA : %4.2f ± %4.2f\n ', mean(h.mean_VA), 2*std(h.mean_VA));
-fprintf ('asc. mean_VA : %4.2f ± %4.2f\n ', mean(h.mean_VA_ascending), 2*std(h.mean_VA_ascending));
+fprintf ('mean_VA       : %4.2f ± %4.2f\n ', mean(h.mean_VA), 2*std(h.mean_VA));
+fprintf ('asc. mean_VA  : %4.2f ± %4.2f\n ', mean(h.mean_VA_ascending), 2*std(h.mean_VA_ascending));
 fprintf ('desc. mean_VA : %4.2f ± %4.2f\n ', mean(h.mean_VA_descending), 2*std(h.mean_VA_descending));
-fprintf ('mean_VA (EVA): %4.2f ± %4.2f\n ', mean(h.EVA), 2*std(h.EVA));
+fprintf ('mean_VA (EVA) : %4.2f ± %4.2f\n ', mean(h.EVA), 2*std(h.EVA));
 
 h0=h;
 
@@ -142,7 +154,7 @@ output.summary.mean_EVA = round(mean(h.EVA), 2);
 output.summary.std_VA   = round(2*std(h.mean_VA), 2);
 output.summary.std_EVA  = round(2*std(h.EVA), 2);
 
-rxjsonfile    = fullerfile (outputDir, 'summary-rx-group.json');
+rxjsonfile    = fullerfile (outputDir, sprintf('summary-rx-group-%s.json', suffix));
 writelines(jsonencode (output), rxjsonfile);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -151,63 +163,106 @@ writelines(jsonencode (output), rxjsonfile);
 
 output.data     = table2struct (tblnoRx);
 
-% round columns 
-
-
 
 groupFilter = ((g.Group == 1) & logical(g.Analyze));
+
 h = g(groupFilter,:);
 fprintf ('No VA deficit. (n = %d)\n', size(h,1))
 fprintf ('VA (mean ± 2SD)\n ', mean(h.mean_VA), 2*std(h.mean_VA))
-fprintf ('mean_VA : %4.2f ± %4.2f\n ', mean(h.mean_VA), 2*std(h.mean_VA))
-fprintf ('asc. mean_VA : %4.2f ± %4.2f\n ', mean(h.mean_VA_ascending), 2*std(h.mean_VA_ascending))
-fprintf ('desc. mean_VA : %4.2f ± %4.2f\n ', mean(h.mean_VA_descending), 2*std(h.mean_VA_descending))
-fprintf ('mean_VA (EVA): %4.2f ± %4.2f\n ', mean(h.EVA), 2*std(h.EVA));
+fprintf ('mean_VA        : %4.2f ± %4.2f\n ', mean(h.mean_VA), 2*std(h.mean_VA))
+fprintf ('asc. mean_VA   : %4.2f ± %4.2f\n ', mean(h.mean_VA_ascending), 2*std(h.mean_VA_ascending))
+fprintf ('desc. mean_VA  : %4.2f ± %4.2f\n ', mean(h.mean_VA_descending), 2*std(h.mean_VA_descending))
+fprintf ('mean_VA (EVA)  : %4.2f ± %4.2f\n ', mean(h.EVA), 2*std(h.EVA));
 
 h1=h;
-
 output.summary.mean_VA  = round(mean(h.mean_VA), 2);
 output.summary.mean_EVA = round(mean(h.EVA), 2);
 output.summary.std_VA   = round(2*std(h.mean_VA), 2);
 output.summary.std_EVA  = round(2*std(h.EVA), 2);
 
-norxjsonfile  = fullerfile (outputDir, 'summary-norx-group.json');
+norxjsonfile  = fullerfile (outputDir, sprintf('summary-norx-group-%s.json', suffix));
 writelines(jsonencode (output), norxjsonfile);
 
 
 %% statistics graphs 
 
-
-
 fprintf ('Statistics\n')
 
-fprintf ('Group 0 vs Group 1. small p = doubt\n');
+fprintf ('Paired t-test, h=0 means that null hypothesis is not rejected at the 5%% significance level.\n');
+
+fprintf ('GROUP 0 (DEFICIT): EVA from 0.0 logMAR.\n');
+
+[h,p,ci,stats] = ttest(h0.EVA);
+fprintf ('h=%d. p=%4.6f, t=%4.2f\n', h, p, stats.tstat);
+
+fprintf ('GROUP 1 (NO DEFICIT): EVA from 0.0 logMAR.\n');
+
+[h,p,ci,stats] = ttest(h1.EVA);
+fprintf ('h=%d. p=%4.6f, t=%4.2f\n', h, p, stats.tstat);
+
+
+fprintf ('Group 0 vs Group 1. small p = doubt < 0.05 they are the same.\n');
 
 % The result h is 1 if the test rejects the null hypothesis at the 5% significance level, and 0 otherwise.
 % null hypothesis that the data in vectors x and y comes from independent random samples from normal distributions with equal means 
 % and equal but unknown variances
 
 [h,p,ci,stats] = ttest2(h0.mean_VA, h1.mean_VA);
-fprintf ('h=%d. p=%4.2f\n', h, p);
+fprintf ('h=%d. p=%4.6f, t=%4.2f\n', h, p, stats.tstat);
 
-
-fprintf ('Group 0 VA-ETDRS vs VA-SWEEP.\n');
-fprintf ('Paired t-test, h=0 means that null hypothesis is not rejected at the 5% significance level.\n');
+fprintf ('Group 0 (Deficit) VA-ETDRS vs VA-SWEEP.\n');
+fprintf ('Paired t-test, h=0 means that null hypothesis is not rejected at the 5%% significance level.\n');
 
 [h,p,ci,stats] = ttest(h0.mean_VA, h0.EVA);
-fprintf ('h=%d. p=%4.2f\n', h, p);
+fprintf ('h=%d. p=%4.6f, t=%4.2f\n', h, p, stats.tstat);
 
+fprintf ('Group 1 (No Deficit) VA-ETDRS vs VA-SWEEP.\n');
+fprintf ('Paired t-test, h=0 means that null hypothesis is not rejected at the 5%% significance level.\n');
 
-fprintf ('Group 1 VA-ETDRS vs VA-SWEEP.\n');
-fprintf ('Paired t-test, h=0 means that null hypothesis is not rejected at the 5% significance level.\n');
-
+fprintf ('Difference from EVA results.\n');
 [h,p,ci,stats] = ttest(h1.mean_VA, h1.EVA);
-fprintf ('h=%d. p=%4.2f\n', h, p);
+fprintf ('h=%d. p=%4.6f, t=%4.2f\n', h, p, stats.tstat);
+
+fprintf ('Difference from 0.\n');
+[h,p,ci,stats] = ttest(h1.mean_VA);
+fprintf ('h=%d. p=%4.6f, t=%4.2f\n', h, p, stats.tstat);
+
+% Automated vs Manual INFORMATION
+%
+% h0 - is data for DEFICIT group 
+% h1 - is data for DEFICIT group 
+%
+
+information_str = sprintf('VA-summary-results-group-%d-%s.csv', 0, suffix);
+information_file = fullerfile (outputDir, information_str);
+writetable(h0, information_file);
+fprintf ('wrote ... %s\n', information_file);
+
+information_str = sprintf('VA-summary-results-group-%d-%s.csv', 1, suffix);
+information_file = fullerfile (outputDir, information_str);
+writetable(h1, information_file);
+fprintf ('wrote ... %s\n', information_file);
 
 
+% REPORT ON AUTOMATED AND MANUAL COMPARISON 
 
+h00_file = './DATA/EXPERIMENT/participant_info_lab/VA-summary-results-group-0-Manual.csv';
+h01_file = './DATA/EXPERIMENT/participant_info_lab/VA-summary-results-group-0-Automated.csv';
+h10_file = './DATA/EXPERIMENT/participant_info_lab/VA-summary-results-group-1-Manual.csv';
+h11_file = './DATA/EXPERIMENT/participant_info_lab/VA-summary-results-group-1-Automated.csv';
 
+h00 = readtable (h00_file);
+h01 = readtable (h01_file);
+h10 = readtable (h10_file);
+h11 = readtable (h11_file);
 
+fprintf ('Group 0 (Deficit) Automated vs Manual.\n');
+[h,p,ci,stats] = ttest(h00.mean_VA, h01.mean_VA);
+fprintf ('h=%d. p=%4.6f, t=%4.2f\n', h, p, stats.tstat);
+
+fprintf ('Group 1 (No Deficit) Automated vs Manual.\n');
+[h,p,ci,stats] = ttest(h10.mean_VA, h11.mean_VA);
+fprintf ('h=%d. p=%4.6f, t=%4.2f\n', h, p, stats.tstat);
 
 
 %% make summaries of information 
@@ -219,15 +274,22 @@ close all;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure (1); clf; 
-showBlandAltman ('all', h0);
-outputFile = fullerfile (outputDir, 'fig-BA-DEFICIT.png');
+showBlandAltman ('all', h0, suffix);
+outputFile = fullerfile (outputDir, sprintf('fig-BA-DEFICIT-%s.png', suffix));
 exportgraphics(gcf, outputFile); 
 
 figure (2); clf; 
-showBlandAltman ('all', h1);
-outputFile = fullerfile (outputDir, 'fig-BA-NODEFICIT.png');
-exportgraphics(gcf, outputFile); 
+showBlandAltman ('all', h1, suffix);
 
+this = findobj (gcf, 'tag', 'Correlation Plot');
+this.YLim = this.YLim + 0.2; 
+
+this = findobj (gcf, 'tag', 'Bland Altman Plot');
+this.YLim = this.YLim + 0.25; 
+
+
+outputFile = fullerfile (outputDir, sprintf('fig-BA-NODEFICIT-%s.png', suffix));
+exportgraphics(gcf, outputFile); 
 
 
 %{
@@ -313,17 +375,18 @@ end
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function showBlandAltman (this_arrangement, y, varargin)
+function showBlandAltman (this_arrangement, y, extra_str, varargin)
 
     
+
     switch (this_arrangement)
 
 
         case { 'all'}
 
             [X2, X1] = get_all_data (y);
-            label = {'VA-EVA','VA-SWEEP','logMAR'};
-            tit = 'VA-SWEEP versus VA-EVA';
+            label = {'VA-EVA','VA-OKN','logMAR'};
+            tit = sprintf('VA-OKN versus VA-EVA (%s)', extra_str);
                         
             %% gnames 
             gnames = { 'Selected Eye' };
@@ -506,7 +569,11 @@ function y = run_generator (res, inputTbl, exclTbl)
     
         %% see if we contains an IGNORE 
         i = ismember(exclTbl.File, each_eye.File) & (exclTbl.Ignore); % & contains (each_trials_data.name, exclTbl.Trial);
-        thisExcl = exclTbl(i,:);
+
+        if  (any(i))        
+            fprintf ('Excluding trials ... %s\n', each_eye.File{1});            
+            thisExcl = exclTbl(i,:);
+        end
 
         if (p == 1)
     
@@ -519,19 +586,20 @@ function y = run_generator (res, inputTbl, exclTbl)
                  appInfo.mean_VA_descending      = each_sweep_summary.mean_descending_VA;
                  appInfo.mean_VA_ascending       = each_sweep_summary.mean_ascending_VA;
                  appInfo.mean_VA                 = each_sweep_summary.mean_mean_VA;
-
-                 appInfo.unbounded                = any((each_trials_data.VA == 1.1) & (~logical(each_trials_data.bounded)));
+                 appInfo.unbounded               = any((each_trials_data.VA == 1.1) & (~logical(each_trials_data.bounded)));
+                 fprintf ('%d. There were no exclusions applied. .... %4.2f\n', p, appInfo.mean_VA);                  
                  
             else 
                  
-                %% these trials will be marked unbounded 
-                 i = ismember(each_trials_data.name, thisExcl.Trial);                  
                  appInfo.mean_VA_descending      = each_sweep_summary.mean_descending_VA;
                  appInfo.mean_VA_ascending       = each_sweep_summary.mean_ascending_VA;
-                 appInfo.mean_VA                 = mean(each_trials_data.VA(~i));
+
+                 %% these trials will be marked unbounded 
+                 j = ismember(each_trials_data.name, thisExcl.Trial);                  
+                 appInfo.mean_VA                 = mean(each_trials_data.VA(~j)); 
                  appInfo.unbounded               = false; % any((each_trials_data.VA == 1.1) & (~logical(each_trials_data.bounded)));
 
-                 fprintf ('applying ignore sweep rule ... %4.2f to %4.2f (%s)\n', each_sweep_summary.mean_mean_VA, appInfo.mean_VA, each_eye.File{:});                 
+                 fprintf ('%d. applying ignore sweep rule ... %4.2f to %4.2f (%s)\n', p, each_sweep_summary.mean_mean_VA, appInfo.mean_VA, each_eye.File{:});                 
 
 
             end 
@@ -579,27 +647,25 @@ function y = run_generator (res, inputTbl, exclTbl)
 
           if (~any(i))
 
+              
                  appInfo(p).mean_VA_descending      = each_sweep_summary.mean_descending_VA;
                  appInfo(p).mean_VA_ascending       = each_sweep_summary.mean_ascending_VA;
                  appInfo(p).mean_VA                 = each_sweep_summary.mean_mean_VA;
-
                  appInfo(p).unbounded                = any((each_trials_data.VA == 1.1) & (~logical(each_trials_data.bounded)));
-          
+                 fprintf ('%d. There were no exclusions applied. .... %4.2f\n', p, appInfo(p).mean_VA);                  
+
+                 
           else 
 
-                 i = ismember(each_trials_data.name, thisExcl.Trial);                  
+                 j = ismember(each_trials_data.name, thisExcl.Trial);  
                  appInfo(p).mean_VA_descending      = each_sweep_summary.mean_descending_VA;
                  appInfo(p).mean_VA_ascending       = each_sweep_summary.mean_ascending_VA;
-                 appInfo(p).mean_VA                 = mean(each_trials_data.VA(~i));
+                 appInfo(p).mean_VA                 = mean(each_trials_data.VA(~j));
                  appInfo(p).unbounded               = false; % any((each_trials_data.VA == 1.1) & (~logical(each_trials_data.bounded)));
 
-                 fprintf ('applying ignore sweep rule ... %4.2f to %4.2f (%s)\n', each_sweep_summary.mean_mean_VA, appInfo(p).mean_VA, each_eye.File{:});                 
+                 fprintf ('%d. applying ignore sweep rule ... %4.2f to %4.2f (%s)\n', p, each_sweep_summary.mean_mean_VA, appInfo(p).mean_VA, each_eye.File{:});                 
 
             end 
-
-            % appInfo(p).std_VA_descending   = each_sweep_summary.mean_descending_VA;
-            % appInfo(p).std_VA_ascending    = each_sweep_summary.mean_ascending_VA;
-            % appInfo(p).std_VA              = each_sweep_summary.mean_mean_VA;
     
             appInfo(p).consensus_VA_descending  = assignParameter(each_consensus_summary.dropoff_VA, nan);
             appInfo(p).consensus_VA_ascending   = assignParameter(each_consensus_summary.onset_VA, nan);

@@ -51,15 +51,24 @@ elseif (istable (resultfile))
 end
 
 
-%% maximum OKN 2-chain point 
-%% minimum OKN 2-chain point 
+% generate an overall activity 
 
-% act = activity_lost (dataTbl, res.window_length);
+info.ep         = end_point_chain (dataTbl, results, res.min_okn_chain_length);
+info.sp         = separated_activity (dataTbl, results, res.min_okn_chains_per_window, res.window_length);
+info.total      = info.ep.chain_activity;
+info.total(:,2) = info.total(:,2) | info.sp.separated_activity(:,2);
 
-info.ep = end_point_chain (dataTbl, results, res.min_okn_chain_length);
-info.sp = separated_activity (dataTbl, results, res.min_okn_chains_per_window, res.window_length);
+info.break      = activity_break (info.total, res.window_length);
 
-% check for highest and lowest 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% We should generate a mask - which can be interpreted in two-ways 
+%
+%   descending 
+%   ascending 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 if ((~info.ep.found_activity) & ~(info.sp.found_activity))
 
@@ -75,16 +84,16 @@ elseif ((~info.ep.found_activity) & (info.sp.found_activity))
     % Only ep activity (i.e., chain)
 
     info.found_activity = true;
-    info.onset_t   = info.sp.onset_t; 
-    info.dropoff_t = info.sp.dropoff_t; 
+    info.onset_t        = info.sp.onset_t; 
+    info.dropoff_t      = info.sp.dropoff_t; 
 
 elseif ((info.ep.found_activity) & (~info.sp.found_activity))
 
     % Only sp activity (i.e., separated)
         
     info.found_activity = true;
-    info.onset_t   = info.ep.onset_t; 
-    info.dropoff_t = info.ep.dropoff_t; 
+    info.onset_t        = info.ep.onset_t; 
+    info.dropoff_t      = info.ep.dropoff_t; 
 
 else   %% both activities found 
 
@@ -102,28 +111,19 @@ end
 end
 
 
-function info = activity_break (dataTbl, drop_duration)
+function ret = activity_break (act, drop_duration)
 
+    %% ACTIVITY_BREAK 
+    %
+    %  returns only those areas with >=2 sec duratiosn  
+    %
+    %   ret = activity_break (act, drop_duration)
 
-    %% initialized information
-    info.found_break  = false;       
-    info.earliest     = -Inf;
-    info.latest       = +Inf;
     
-    %% find points where potential OKN is occurring 
-    is_sp    = cellfun (@(x) strcmpi(x,'true'), dataTbl.is_sp);
-    is_qp    = cellfun (@(x) strcmpi(x,'true'), dataTbl.is_qp); 
-    is_valid = thisTbl.is_valid; 
-    is_okn   = ( is_sp | is_qp ) & (is_valid);
-    t        = dataTbl.t;
-
-    %% areas that are not OKN 
-    is_not_okn    = ~is_okn;
+    t             = act(:,1);
+    is_not_okn    = ~act(:,2);
     regions       = bwconncomp (is_not_okn);
-    highest_start = 0;
-    lowest_end    = Inf;
-
-
+    
     %
     % Find these times: 
     %
@@ -134,27 +134,27 @@ function info = activity_break (dataTbl, drop_duration)
 
     M = length (regions.PixelIdxList);
     if (M > 1)
-        
-        count = 1;
         for m = 1:M
-            each_region   = regions.PixelIdxList{m};            
-            start_time    = t(each_region(1));
-            end_time      = t(each_region(end));
-            
-            %% a long interval 
-            if ((end_time - start_time) > drop_duration)
-                interval(count,1)    = t(each_region(1));
-                interval(count,2)    = t(each_region(end));
-                count = count + 1;
+            each_region = regions.PixelIdxList{m};
+            n1 = each_region(1);
+            n2 = each_region(end);
+            start_time    = t(n1);
+            end_time      = t(n2);
+            if ((end_time - start_time) < drop_duration)                
+                is_not_okn(n1:n2) = false; 
             end
         end
 
-        info.found_break = true;
-        info.earliest    = min(interval(:,1)); % descending 
-        info.latest      = max(interval(:,2)); % ascending 
-        info.regions     = interval;
+        % info.found_break = true;
+        % info.earliest    = min(interval(:,1)); % descending 
+        % info.latest      = max(interval(:,2)); % ascending 
+        % info.regions     = interval;
         
     end
+
+    ret(:,1) = t;
+    ret(:,2) = is_not_okn;
+    
 
 end
 
@@ -287,8 +287,8 @@ for k = 1:M
 
         y(k) = true;
         
-        %% This window contains separated OKN!
-        
+        %% WE SHOULD DO THIS AT THE END!
+
         %% ... so find highest dropoff       
         info.dropoff_n = find(is_okn, 1, 'last');
         info.dropoff_t = thisTbl.t(info.dropoff_n);
@@ -343,8 +343,8 @@ end
 r                 = (y & (g_is_okn)); 
 valid_chain_id    = unique(dataTbl.chain_id (r));
 valid_data_points = ismember(dataTbl.chain_id, valid_chain_id) & (g_is_sp | g_is_qp );
+r                 = r | valid_data_points;
 
-r       = r | valid_data_points;
 
 info.separated_activity = [ t r ];
 
